@@ -7,9 +7,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const estilosPorVariante: Record<VarianteBotao, string> = {
-  primary: "bg-blue-900 text-white hover:bg-blue-800",
-  secondary: "bg-zinc-900 text-white hover:bg-zinc-800",
-  outline: "border border-zinc-300 text-zinc-900 hover:bg-zinc-100",
+  primary: "bg-brand-green text-white hover:bg-brand-green-dark",
+  secondary: "bg-dark text-white hover:bg-dark-2",
+  outline: "border border-zinc-300 text-ink hover:bg-zinc-100",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

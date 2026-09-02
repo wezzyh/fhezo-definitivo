@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+ * Paleta oficial da marca Fhezo Industrial.
+ * Cada --color-* abaixo vira utilitários Tailwind com o mesmo nome
+ * (ex.: bg-brand-green, text-ink, border-dark-2, bg-warning/10 etc.).
+ *
+ *   brand-green      #009B6C  ações, destaques, hover
+ *   brand-green-dark #007A54  hover/estado ativo do brand-green
+ *   dark             #0D0D0D  header, footer
+ *   dark-2           #1A1A1A  seções escuras secundárias
+ *   page             #F5F5F3  fundo das páginas de conteúdo
+ *   ink              #1A1A1A  texto principal (era "text-dark")
+ *   muted            #5F5E5A  texto secundário (era "text-gray")
+ *   warning          #E8B93A  uso pontual, nunca fundo grande
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-brand-green: #009b6c;
+  --color-brand-green-dark: #007a54;
+  --color-dark: #0d0d0d;
+  --color-dark-2: #1a1a1a;
+  --color-page: #f5f5f3;
+  --color-ink: #1a1a1a;
+  --color-muted: #5f5e5a;
+  --color-warning: #e8b93a;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter), sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-ink);
 }
