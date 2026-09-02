@@ -60,6 +60,14 @@ export default function PaginaPagamento() {
     null,
   );
   const tentativasPolling = useRef(0);
+  // Fica `true` assim que criarPedido() retorna sucesso, ANTES de limpar o
+  // carrinho — evita que o efeito de "dados incompletos" abaixo confunda o
+  // carrinho recém-esvaziado com um checkout abandonado e mande de volta
+  // para /checkout no meio da navegação para /checkout/confirmacao
+  // (boleto/cartão). Uma ref e não state porque precisa valer já no mesmo
+  // re-render dessincronizado que limparCarrinho() dispara, sem esperar
+  // outro ciclo de commit.
+  const pedidoFinalizadoRef = useRef(false);
 
   const total = subtotal + (freteSelecionado?.valor ?? 0);
 
@@ -69,7 +77,7 @@ export default function PaginaPagamento() {
   // propósito — não deve mais disparar o redirecionamento de "dados
   // incompletos" enquanto a tela de Pix ainda está aguardando confirmação.
   useEffect(() => {
-    if (!dadosCompletos && !resultado) {
+    if (!dadosCompletos && !resultado && !pedidoFinalizadoRef.current) {
       router.replace("/checkout");
     }
   }, [dadosCompletos, resultado, router]);
@@ -180,6 +188,10 @@ export default function PaginaPagamento() {
 
     // O pedido já está gravado a partir daqui — o carrinho pode ser limpo
     // independente do pagamento (Pix) ainda estar pendente de confirmação.
+    // Marca ANTES de limparCarrinho() para não disparar o redirect de
+    // "dados incompletos" no re-render intermediário (ver comentário na
+    // declaração de pedidoFinalizadoRef).
+    pedidoFinalizadoRef.current = true;
     limparCarrinho();
 
     if (resposta.formaPagamento !== "pix") {

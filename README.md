@@ -35,6 +35,9 @@ correntes, graxas, ferramentas, parafusos e porcas especiais.
    - `MELHOR_ENVIO_CEP_ORIGEM` (CEP de onde os produtos são enviados)
    - `ASAAS_API_KEY` (API Key do ambiente sandbox do Asaas)
    - `ASAAS_WEBHOOK_TOKEN` (valor definido por você e cadastrado igual no painel do Asaas)
+   - `BLING_CLIENT_ID` / `BLING_CLIENT_SECRET` (aplicativo cadastrado em developer.bling.com.br)
+   - `BLING_REDIRECT_URI` (deve ser idêntica à URL de callback cadastrada nesse aplicativo)
+   - `BLING_FORMA_PAGAMENTO_ID` (ID de uma forma de pagamento já cadastrada na sua conta Bling)
 
 3. Rode o servidor de desenvolvimento:
 
@@ -71,6 +74,13 @@ src/
     admin/                      # Painel administrativo (rota protegida — uso interno)
       login/page.tsx            # Login (Supabase Auth, email/senha)
       login/actions.ts          # Server Action de login
+      integracao/
+        melhorenvio/callback/route.ts  # Callback OAuth do Melhor Envio
+        bling/
+          callback/route.ts            # Callback OAuth do Bling
+          actions.ts                    # Sincronizar estoque / reenviar pedido ao Bling
+          botao-sincronizar-estoque.tsx
+          botao-reenviar-pedido.tsx
       produtos/
         page.tsx                # Lista todos os produtos (inclusive inativos)
         novo/page.tsx            # Formulário de criação
@@ -91,9 +101,13 @@ src/
       admin.ts                  # Cliente com service_role key (ignora RLS) — só server-side confiável
     integracoes/
       melhorenvio.ts             # Fluxo OAuth 2.0 do Melhor Envio (autorização, refresh, persistência)
+      bling.ts                    # Fluxo OAuth 2.0 do Bling (autorização, refresh, persistência)
+      bling-api.ts                 # Cliente da API do Bling (produtos, contatos, pedidos de venda)
+      bling-pedidos.ts              # Envia um pedido pago como Pedido de Venda no Bling
     pagamento/
       asaas.ts                   # Cliente da API do Asaas (customer, cobrança, Pix, boleto)
-      pedidos.ts                  # Mapeia status do Asaas -> status do pedido (webhook + polling)
+      pedidos.ts                  # Mapeia status do Asaas -> status do pedido (webhook + polling + sync Bling)
+      estoque.ts                   # Desconto/reversão atômica de estoque via RPC no Postgres
       validar-cartao.ts           # Validação de cartão no navegador (Luhn, validade, CVV)
     produtos/
       formatar-atributos.ts     # Formata o jsonb de atributos técnicos para exibição
@@ -158,9 +172,47 @@ administrador — pontos para uma futura checagem de "role" estão marcados com
   a service_role key (`src/lib/supabase/admin.ts`), porque quem compra é um
   visitante sem sessão de admin.
 
+## Integração com o Bling (ERP)
+
+- Mesmo padrão OAuth 2.0 do Melhor Envio, reaproveitando a tabela
+  `integracoes` (`provedor = 'bling'`): `src/lib/integracoes/bling.ts`
+  (autorização, troca/renovação de token) e
+  `src/app/admin/integracao/bling/callback/route.ts`. Conecta pela seção
+  "Integrações" em `/admin`.
+- **Estoque (Bling → site)**: botão "Sincronizar estoque com Bling" no
+  `/admin` busca todos os produtos do Bling (`buscarTodosProdutosBling` em
+  `src/lib/integracoes/bling-api.ts`) e, para cada SKU que bate com um
+  produto local, atualiza `estoque` e `bling_produto_id` — o Bling é a
+  fonte de verdade do estoque. Produtos que só existem no Bling **não são
+  criados automaticamente**; aparecem numa lista para decisão manual.
+  Ainda é manual, sob demanda — um cron pode chamar
+  `sincronizarEstoqueBling()` depois.
+- **Pedidos pagos (site → Bling)**: quando um pedido transiciona para
+  `pago` — webhook do Asaas ou confirmação de Pix, ambos passam por
+  `atualizarStatusPedidoPorPagamento` em `src/lib/pagamento/pedidos.ts` —
+  `enviarPedidoParaBling` (`src/lib/integracoes/bling-pedidos.ts`) busca ou
+  cria o contato no Bling pelo CPF/CNPJ e cria um Pedido de Venda com os
+  itens (via `bling_produto_id`) e o frete. Isso é **melhor esforço**: uma
+  falha aqui nunca reverte o pagamento nem trava o pedido — fica registrada
+  em `pedidos.bling_erro_sincronizacao`, visível na seção "Pedidos pagos
+  não sincronizados com o Bling" no `/admin`, com botão para tentar de
+  novo.
+- Chamadas à API de recursos do Bling (`src/lib/integracoes/bling-api.ts`)
+  sempre renovam o token antes de usar e tratam o limite de 3
+  requisições/segundo (HTTP 429) com uma nova tentativa simples.
+- **Não testado ao vivo**: diferente do Melhor Envio/Asaas, não há
+  credenciais de uma conta Bling disponíveis neste ambiente — a
+  implementação segue de perto a documentação oficial
+  (developer.bling.com.br) e uma biblioteca de referência bem tipada, mas
+  precisa ser validada com uma conta real antes de ir para produção (ver
+  "Como testar" no fim deste documento/na resposta da tarefa).
+- Emissão de NF-e fica fora de escopo por enquanto (depende de CNPJ e
+  certificado digital configurados no Bling).
+
 ## Status atual
 
 Este é o **Bloco 3** completo: carrinho, checkout (dados do cliente +
 endereço + frete) e pagamento (Pix/boleto/cartão via Asaas) com gravação
-definitiva do pedido. Ainda falta: a gestão de clientes/pedidos no painel
-admin (listar, ver detalhes, mudar status manualmente).
+definitiva do pedido, mais integração com o Bling (ERP) para estoque e
+pedidos. Ainda falta: a gestão de clientes/pedidos no painel admin (listar,
+ver detalhes, mudar status manualmente).

@@ -25,7 +25,7 @@ export async function salvarClienteCheckout(
 ): Promise<ResultadoSalvarCliente> {
   const dados: {
     tipo: TipoPessoa;
-    nome_razao_social: string;
+    nome: string;
     documento: string;
     email: string;
     telefone: string;
@@ -33,20 +33,20 @@ export async function salvarClienteCheckout(
     input.tipoCliente === "PF"
       ? {
           tipo: "PF",
-          nome_razao_social: input.dadosPF.nomeCompleto.trim(),
+          nome: input.dadosPF.nomeCompleto.trim(),
           documento: input.dadosPF.cpf.replace(/\D/g, ""),
           email: input.dadosPF.email.trim(),
           telefone: input.dadosPF.telefone.replace(/\D/g, ""),
         }
       : {
           tipo: "PJ",
-          nome_razao_social: input.dadosPJ.razaoSocial.trim(),
+          nome: input.dadosPJ.razaoSocial.trim(),
           documento: input.dadosPJ.cnpj.replace(/\D/g, ""),
           email: input.dadosPJ.email.trim(),
           telefone: input.dadosPJ.telefone.replace(/\D/g, ""),
         };
 
-  if (!dados.nome_razao_social || !dados.documento || !dados.email) {
+  if (!dados.nome || !dados.documento || !dados.email) {
     return { sucesso: false, mensagem: "Preencha todos os dados obrigatórios antes de continuar." };
   }
 

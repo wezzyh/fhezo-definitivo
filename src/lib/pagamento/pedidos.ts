@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StatusPedido } from "@/types/database";
 import { reverterEstoquePedido } from "./estoque";
+import { enviarPedidoParaBling } from "@/lib/integracoes/bling-pedidos";
 
 // Mapeamento entre o status de cobrança do Asaas e o status do nosso
 // pedido. Compartilhado pelo webhook (src/app/api/webhooks/asaas/route.ts,
@@ -60,6 +61,18 @@ export async function atualizarStatusPedidoPorPagamento(
 
   if (novoStatus === "cancelado") {
     await reverterEstoquePedido(supabase, pedidoAtualizado.id);
+  }
+
+  if (novoStatus === "pago") {
+    // Melhor esforço: uma falha aqui não deve reverter o pagamento nem
+    // travar quem chamou — fica registrada em bling_erro_sincronizacao,
+    // visível no /admin, com botão para tentar de novo manualmente.
+    try {
+      await enviarPedidoParaBling(supabase, pedidoAtualizado.id);
+    } catch {
+      // enviarPedidoParaBling já não lança e já registra o erro; este
+      // catch é só uma rede de segurança extra.
+    }
   }
 
   return novoStatus;

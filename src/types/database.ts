@@ -25,13 +25,15 @@ export interface Produto {
   altura_cm: number;
   largura_cm: number;
   comprimento_cm: number;
+  /** Referência cruzada para o produto correspondente no Bling (ERP). */
+  bling_produto_id: number | null;
   created_at: string;
 }
 
 export interface Cliente {
   id: string;
   tipo: TipoPessoa;
-  nome_razao_social: string;
+  nome: string;
   /** CPF (Pessoa Física) ou CNPJ (Pessoa Jurídica), conforme o campo "tipo". */
   documento: string;
   email: string;
@@ -67,6 +69,12 @@ export interface Pedido {
   endereco_bairro: string | null;
   endereco_cidade: string | null;
   endereco_uf: string | null;
+  /** ID do pedido de venda correspondente no Bling (ERP), depois de pago. */
+  bling_pedido_id: number | null;
+  /** `true` quando este pedido pago foi enviado ao Bling com sucesso. */
+  bling_sincronizado: boolean;
+  /** Última mensagem de erro ao tentar enviar este pedido ao Bling. */
+  bling_erro_sincronizacao: string | null;
   created_at: string;
 }
 
