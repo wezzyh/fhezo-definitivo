@@ -62,3 +62,17 @@ export interface PedidoItem {
   quantidade: number;
   preco_unitario: number;
 }
+
+/**
+ * Tokens OAuth de uma integração externa (ex.: Melhor Envio), guardados de
+ * forma persistente porque expiram e precisam ser renovados em runtime.
+ */
+export interface Integracao {
+  id: string;
+  provedor: string;
+  access_token: string | null;
+  refresh_token: string | null;
+  expira_em: string | null;
+  created_at: string;
+  updated_at: string;
+}

@@ -29,9 +29,10 @@ correntes, graxas, ferramentas, parafusos e porcas especiais.
 
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `MELHOR_ENVIO_TOKEN` (gerado manualmente no painel sandbox do Melhor Envio)
+   - `SUPABASE_SERVICE_ROLE_KEY` (Project Settings > API — nunca expor ao navegador)
+   - `MELHOR_ENVIO_CLIENT_ID` / `MELHOR_ENVIO_CLIENT_SECRET` (app cadastrado no painel sandbox do Melhor Envio)
+   - `MELHOR_ENVIO_REDIRECT_URI` (deve ser idêntica à URL de callback cadastrada nesse painel)
    - `MELHOR_ENVIO_CEP_ORIGEM` (CEP de onde os produtos são enviados)
-   - `MELHOR_ENVIO_CLIENT_ID` / `MELHOR_ENVIO_CLIENT_SECRET` (reservados para um futuro fluxo OAuth — ainda não usados)
 
 3. Rode o servidor de desenvolvimento:
 
@@ -104,7 +105,10 @@ administrador — pontos para uma futura checagem de "role" estão marcados com
   para preenchimento manual se a consulta falhar.
 - O frete é calculado via Server Action (`src/lib/frete/melhorenvio.ts`),
   chamando a API sandbox do Melhor Envio com o CEP de destino e o
-  peso/dimensões dos produtos no carrinho.
+  peso/dimensões dos produtos no carrinho. O access_token usado vem da
+  tabela `integracoes` (fluxo OAuth 2.0, ver `src/lib/integracoes/melhorenvio.ts`
+  e a seção "Integrações" em `/admin`), com renovação automática via
+  refresh_token.
 - Esta etapa **não grava pedido no banco nem processa pagamento** — só
   valida e guarda os dados em memória para a próxima etapa.
 

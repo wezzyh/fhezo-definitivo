@@ -2,9 +2,15 @@
 
 // Cálculo de opções de frete via API sandbox do Melhor Envio.
 //
-// Usa apenas MELHOR_ENVIO_TOKEN (gerado manualmente no painel sandbox) para
-// autenticar como Bearer token. MELHOR_ENVIO_CLIENT_ID/CLIENT_SECRET ficam
-// reservados para um futuro fluxo OAuth completo — não são usados aqui ainda.
+// O access_token vem da tabela "integracoes" (preenchida pelo fluxo OAuth
+// em src/lib/integracoes/melhorenvio.ts), renovado automaticamente via
+// refresh_token quando necessário — não depende mais de um token fixo em
+// variável de ambiente. A leitura usa a service_role key (ver
+// src/lib/supabase/admin.ts) porque quem calcula o frete aqui é um
+// visitante no checkout público, sem sessão de admin.
+
+import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
+import { obterTokenValidoMelhorEnvio } from "@/lib/integracoes/melhorenvio";
 
 const URL_BASE = "https://sandbox.melhorenvio.com.br/api/v2";
 
@@ -46,11 +52,24 @@ export async function calcularOpcoesFrete(
   cepDestino: string,
   itens: ItemParaFrete[],
 ): Promise<ResultadoFrete> {
-  const token = process.env.MELHOR_ENVIO_TOKEN;
   const cepOrigem = process.env.MELHOR_ENVIO_CEP_ORIGEM;
-
-  if (!token || !cepOrigem) {
+  if (!cepOrigem) {
     return { sucesso: false, mensagem: MENSAGEM_INDISPONIVEL };
+  }
+
+  let token: string | null;
+  try {
+    token = await obterTokenValidoMelhorEnvio(criarClienteSupabaseAdmin());
+  } catch {
+    token = null;
+  }
+
+  if (!token) {
+    return {
+      sucesso: false,
+      mensagem:
+        "O frete não pôde ser calculado porque a integração com o Melhor Envio não está conectada. Avise o administrador da loja.",
+    };
   }
 
   const cepDestinoLimpo = cepDestino.replace(/\D/g, "");
