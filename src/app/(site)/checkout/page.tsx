@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCarrinho } from "@/lib/carrinho/contexto";
 import { useCheckout } from "@/lib/checkout/contexto";
 import { validarCPF, validarCNPJ } from "@/lib/checkout/validar-documento";
+import { salvarClienteCheckout } from "./actions";
 import { SecaoTipoCliente } from "./secao-tipo-cliente";
 import { SecaoEndereco } from "./secao-endereco";
 import { SecaoFrete } from "./secao-frete";
@@ -14,15 +16,21 @@ import { ResumoPedido } from "./resumo-pedido";
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function PaginaCheckout() {
+  const router = useRouter();
   const { itens } = useCarrinho();
   const {
     tipoCliente,
     dadosPF,
     dadosPJ,
     endereco,
+    freteSelecionado,
     confirmado,
     definirConfirmado,
+    definirClienteId,
   } = useCheckout();
+
+  const [salvando, setSalvando] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
 
   const erros = useMemo(() => {
     const lista: string[] = [];
@@ -46,10 +54,30 @@ export default function PaginaCheckout() {
     if (!endereco.cidade.trim()) lista.push("Informe a cidade.");
     if (!endereco.uf.trim()) lista.push("Selecione o estado (UF).");
 
+    if (!freteSelecionado) lista.push("Selecione uma opção de frete.");
+
     return lista;
-  }, [tipoCliente, dadosPF, dadosPJ, endereco]);
+  }, [tipoCliente, dadosPF, dadosPJ, endereco, freteSelecionado]);
 
   const podeContinuar = erros.length === 0;
+
+  async function lidarComContinuar() {
+    setErroSalvar(null);
+    setSalvando(true);
+
+    const resultado = await salvarClienteCheckout({ tipoCliente, dadosPF, dadosPJ });
+
+    setSalvando(false);
+
+    if (!resultado.sucesso) {
+      setErroSalvar(resultado.mensagem);
+      return;
+    }
+
+    definirClienteId(resultado.clienteId);
+    definirConfirmado(true);
+    router.push("/checkout/pagamento");
+  }
 
   if (itens.length === 0) {
     return (
@@ -78,7 +106,7 @@ export default function PaginaCheckout() {
             {confirmado ? (
               <div className="rounded-md border border-brand-green/30 bg-brand-green/10 p-4">
                 <p className="font-medium text-brand-green-dark">
-                  Dados salvos. A etapa de pagamento será adicionada em breve.
+                  Dados salvos. Você será redirecionado para o pagamento...
                 </p>
               </div>
             ) : (
@@ -90,13 +118,14 @@ export default function PaginaCheckout() {
                     ))}
                   </ul>
                 )}
+                {erroSalvar && <p className="mb-4 text-sm text-red-600">{erroSalvar}</p>}
                 <Button
                   type="button"
                   variant="primary"
-                  disabled={!podeContinuar}
-                  onClick={() => definirConfirmado(true)}
+                  disabled={!podeContinuar || salvando}
+                  onClick={lidarComContinuar}
                 >
-                  Continuar para pagamento
+                  {salvando ? "Salvando..." : "Continuar para pagamento"}
                 </Button>
               </div>
             )}

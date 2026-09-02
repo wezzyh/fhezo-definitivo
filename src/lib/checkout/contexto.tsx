@@ -43,6 +43,9 @@ interface ContextoCheckoutValor {
   /** Fica `true` depois que o cliente confirma os dados; volta a `false` a qualquer edição. */
   confirmado: boolean;
   definirConfirmado: (valor: boolean) => void;
+  /** Preenchido pela Server Action que grava/atualiza o cliente em `clientes`. */
+  clienteId: string | null;
+  definirClienteId: (id: string | null) => void;
 }
 
 const CheckoutContext = createContext<ContextoCheckoutValor | null>(null);
@@ -57,7 +60,13 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [dadosPJ, setDadosPJ] = useState<DadosPJ>(dadosPJIniciais);
   const [endereco, setEndereco] = useState<EnderecoEntrega>(enderecoInicial);
   const [freteSelecionado, definirFreteSelecionado] = useState<FreteSelecionado | null>(null);
-  const [confirmado, definirConfirmado] = useState(false);
+  const [confirmado, definirConfirmadoState] = useState(false);
+  const [clienteId, definirClienteId] = useState<string | null>(null);
+
+  const definirConfirmado = (valor: boolean) => {
+    definirConfirmadoState(valor);
+    if (!valor) definirClienteId(null);
+  };
 
   const valor = useMemo<ContextoCheckoutValor>(
     () => ({
@@ -85,8 +94,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       definirFreteSelecionado,
       confirmado,
       definirConfirmado,
+      clienteId,
+      definirClienteId,
     }),
-    [tipoCliente, dadosPF, dadosPJ, endereco, freteSelecionado, confirmado],
+    [tipoCliente, dadosPF, dadosPJ, endereco, freteSelecionado, confirmado, clienteId],
   );
 
   return <CheckoutContext.Provider value={valor}>{children}</CheckoutContext.Provider>;

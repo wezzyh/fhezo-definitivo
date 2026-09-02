@@ -33,6 +33,8 @@ correntes, graxas, ferramentas, parafusos e porcas especiais.
    - `MELHOR_ENVIO_CLIENT_ID` / `MELHOR_ENVIO_CLIENT_SECRET` (app cadastrado no painel sandbox do Melhor Envio)
    - `MELHOR_ENVIO_REDIRECT_URI` (deve ser idêntica à URL de callback cadastrada nesse painel)
    - `MELHOR_ENVIO_CEP_ORIGEM` (CEP de onde os produtos são enviados)
+   - `ASAAS_API_KEY` (API Key do ambiente sandbox do Asaas)
+   - `ASAAS_WEBHOOK_TOKEN` (valor definido por você e cadastrado igual no painel do Asaas)
 
 3. Rode o servidor de desenvolvimento:
 
@@ -52,7 +54,20 @@ src/
       produtos/
         page.tsx               # Listagem de produtos ativos (dados reais do Supabase)
         [id]/page.tsx          # Página de um produto
+      checkout/
+        page.tsx                # Dados do cliente + endereço + frete
+        actions.ts               # Server Action: grava/atualiza cliente em "clientes"
+        pagamento/
+          page.tsx                # Escolha da forma de pagamento (Pix/boleto/cartão)
+          actions.ts               # Server Actions: cria cobrança no Asaas + grava o pedido
+          formulario-cartao.tsx    # Formulário de cartão + dados do titular
+        confirmacao/
+          page.tsx                # Número do pedido, status, boleto (se aplicável)
+          actions.ts               # Busca o resumo do pedido para exibir
       layout.tsx               # Layout do site (header + footer)
+    api/
+      webhooks/
+        asaas/route.ts           # Recebe confirmação de pagamento do Asaas
     admin/                      # Painel administrativo (rota protegida — uso interno)
       login/page.tsx            # Login (Supabase Auth, email/senha)
       login/actions.ts          # Server Action de login
@@ -73,6 +88,13 @@ src/
     supabase/
       client.ts                 # Cliente Supabase para Client Components (browser)
       server.ts                 # Cliente Supabase para Server Components/Server Actions
+      admin.ts                  # Cliente com service_role key (ignora RLS) — só server-side confiável
+    integracoes/
+      melhorenvio.ts             # Fluxo OAuth 2.0 do Melhor Envio (autorização, refresh, persistência)
+    pagamento/
+      asaas.ts                   # Cliente da API do Asaas (customer, cobrança, Pix, boleto)
+      pedidos.ts                  # Mapeia status do Asaas -> status do pedido (webhook + polling)
+      validar-cartao.ts           # Validação de cartão no navegador (Luhn, validade, CVV)
     produtos/
       formatar-atributos.ts     # Formata o jsonb de atributos técnicos para exibição
   types/
@@ -109,12 +131,36 @@ administrador — pontos para uma futura checagem de "role" estão marcados com
   tabela `integracoes` (fluxo OAuth 2.0, ver `src/lib/integracoes/melhorenvio.ts`
   e a seção "Integrações" em `/admin`), com renovação automática via
   refresh_token.
-- Esta etapa **não grava pedido no banco nem processa pagamento** — só
-  valida e guarda os dados em memória para a próxima etapa.
+- Ao avançar para o pagamento, o cliente é gravado (ou atualizado, se o
+  CPF/CNPJ já existir) na tabela `clientes` via Server Action
+  (`src/app/(site)/checkout/actions.ts`).
+
+## Pagamento (Asaas) e criação do pedido
+
+- `/checkout/pagamento` (`src/app/(site)/checkout/pagamento/`) oferece Pix,
+  boleto e cartão. Ao confirmar, a Server Action `criarPedido` (`actions.ts`
+  dessa pasta): valida preço/estoque direto no banco (nunca confia no preço
+  vindo do navegador), cria/reaproveita o customer no Asaas, cria a
+  cobrança e só então grava o pedido em `pedidos` + `pedido_itens`.
+- Pix: mostra QR Code + código copia-e-cola e faz polling do status a cada
+  5s (`verificarStatusPagamento`) até a confirmação, redirecionando para
+  `/checkout/confirmacao`.
+- Boleto/cartão: como a cobrança já nasce criada (ou paga, no caso do
+  cartão aprovado), o redirecionamento para `/checkout/confirmacao` é
+  imediato.
+- O carrinho é limpo assim que o pedido é gravado com sucesso — mesmo que o
+  Pix ainda esteja aguardando confirmação.
+- `src/app/api/webhooks/asaas/route.ts` recebe os eventos de cobrança do
+  Asaas (fonte de verdade do status de pagamento) e atualiza `pedidos` pelo
+  `asaas_payment_id`. Valida o cabeçalho `asaas-access-token` contra
+  `ASAAS_WEBHOOK_TOKEN` antes de processar qualquer coisa.
+- Todo acesso às tabelas `clientes`/`pedidos`/`pedido_itens` nesse fluxo usa
+  a service_role key (`src/lib/supabase/admin.ts`), porque quem compra é um
+  visitante sem sessão de admin.
 
 ## Status atual
 
-Este é o **Bloco 3 (parte 1)** do projeto: carrinho de compras funcional e
-checkout com dados do cliente + cálculo de frete. Ainda faltam: a etapa de
-pagamento, a criação do registro em `pedidos`/`pedido_itens`, e a gestão de
-clientes/pedidos no admin.
+Este é o **Bloco 3** completo: carrinho, checkout (dados do cliente +
+endereço + frete) e pagamento (Pix/boleto/cartão via Asaas) com gravação
+definitiva do pedido. Ainda falta: a gestão de clientes/pedidos no painel
+admin (listar, ver detalhes, mudar status manualmente).

@@ -35,6 +35,7 @@ export interface Cliente {
   /** CPF (Pessoa Física) ou CNPJ (Pessoa Jurídica), conforme o campo "tipo". */
   documento: string;
   email: string;
+  telefone: string | null;
   created_at: string;
 }
 
@@ -46,11 +47,26 @@ export type StatusPedido =
   | "entregue"
   | "cancelado";
 
+export type FormaPagamento = "pix" | "boleto" | "cartao";
+
 export interface Pedido {
   id: string;
   cliente_id: string;
   status: StatusPedido;
   total: number;
+  forma_pagamento: FormaPagamento | null;
+  /** ID da cobrança (payment) correspondente no Asaas. */
+  asaas_payment_id: string | null;
+  frete_valor: number | null;
+  frete_transportadora: string | null;
+  /** Endereço de entrega no momento da compra (não é o cadastro do cliente). */
+  endereco_cep: string | null;
+  endereco_rua: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  endereco_cidade: string | null;
+  endereco_uf: string | null;
   created_at: string;
 }
 
