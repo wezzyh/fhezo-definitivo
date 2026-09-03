@@ -3,14 +3,19 @@ import { Card } from "@/components/ui/card";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import type { Produto } from "@/types/database";
 
+interface ProdutoComRelacoes extends Produto {
+  marca: { nome: string } | null;
+  categoria: { nome: string } | null;
+}
+
 export default async function PaginaProdutos() {
   const supabase = await criarClienteSupabaseServidor();
   const { data: produtos, error } = await supabase
     .from("produtos")
-    .select("*")
+    .select("*, marca:marcas(nome), categoria:categorias(nome)")
     .eq("ativo", true)
     .order("nome")
-    .returns<Produto[]>();
+    .returns<ProdutoComRelacoes[]>();
 
   return (
     <div className="bg-page">
@@ -37,9 +42,22 @@ export default async function PaginaProdutos() {
             {produtos.map((produto) => (
               <Link key={produto.id} href={`/produtos/${produto.id}`}>
                 <Card className="h-full transition-shadow hover:shadow-sm">
-                  <span className="text-xs font-medium uppercase tracking-wide text-brand-green">
-                    {produto.categoria}
-                  </span>
+                  {produto.imagem_url && (
+                    // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image.
+                    <img
+                      src={produto.imagem_url}
+                      alt={produto.nome}
+                      className="mb-3 aspect-square w-full rounded-md object-cover"
+                    />
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium uppercase tracking-wide text-brand-green">
+                      {produto.categoria?.nome ?? "Sem categoria"}
+                    </span>
+                    {produto.marca?.nome && (
+                      <span className="text-xs font-medium text-muted">{produto.marca.nome}</span>
+                    )}
+                  </div>
                   <h2 className="mt-2 font-medium text-ink">{produto.nome}</h2>
                   <p className="mt-1 text-xs font-medium text-muted">SKU: {produto.sku}</p>
                   <p className="mt-4 text-lg font-medium text-ink">

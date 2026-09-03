@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { sincronizarEstoqueBling } from "./actions";
+import { sincronizarEstoqueBling, type ProdutoCriadoResumo } from "./actions";
 
 export function BotaoSincronizarEstoqueBling() {
   const [sincronizando, setSincronizando] = useState(false);
@@ -10,7 +10,7 @@ export function BotaoSincronizarEstoqueBling() {
     sucesso: boolean;
     mensagem?: string;
     atualizados?: number;
-    naoEncontradosNoSite?: string[];
+    criados?: ProdutoCriadoResumo[];
   } | null>(null);
 
   async function lidarComClique() {
@@ -36,15 +36,22 @@ export function BotaoSincronizarEstoqueBling() {
           <p className="text-brand-green-dark">
             {resultado.atualizados} produto(s) tiveram o estoque atualizado.
           </p>
-          {resultado.naoEncontradosNoSite && resultado.naoEncontradosNoSite.length > 0 && (
+          {resultado.criados && resultado.criados.length > 0 && (
             <div className="mt-2 rounded-md bg-zinc-50 p-3">
               <p className="font-medium text-ink">
-                {resultado.naoEncontradosNoSite.length} produto(s) no Bling não sincronizado(s) (sem SKU
-                correspondente no site — nada foi criado automaticamente):
+                {resultado.criados.length} produto(s) novo(s) criado(s) a partir do Bling — inativos,
+                aguardando sua revisão em /admin/produtos antes de aparecerem na loja:
               </p>
               <ul className="mt-1 list-inside list-disc text-muted">
-                {resultado.naoEncontradosNoSite.map((item) => (
-                  <li key={item}>{item}</li>
+                {resultado.criados.map((produto) => (
+                  <li key={produto.sku}>
+                    {produto.sku} — {produto.nome}
+                    {produto.precoZerado && (
+                      <span className="ml-1 font-medium text-amber-700">
+                        (preço veio zerado do Bling — revisar)
+                      </span>
+                    )}
+                  </li>
                 ))}
               </ul>
             </div>

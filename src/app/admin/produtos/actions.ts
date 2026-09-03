@@ -26,7 +26,8 @@ function extrairAtributosTecnicos(formData: FormData): Record<string, string> {
 interface DadosProdutoValidados {
   sku: string;
   nome: string;
-  categoria: string;
+  marca_id: string;
+  categoria_id: string;
   descricao: string | null;
   preco: number;
   estoque: number;
@@ -35,6 +36,11 @@ interface DadosProdutoValidados {
   altura_cm: number;
   largura_cm: number;
   comprimento_cm: number;
+  ean: string | null;
+  ncm: string | null;
+  seo_titulo: string | null;
+  seo_descricao: string | null;
+  imagem_url: string | null;
   atributos: Record<string, string>;
 }
 
@@ -53,10 +59,16 @@ function validarNumeroPositivo(
   return numero;
 }
 
+function campoOpcional(formData: FormData, campo: string): string | null {
+  const valor = String(formData.get(campo) ?? "").trim();
+  return valor || null;
+}
+
 function validarDadosProduto(formData: FormData): DadosProdutoValidados | { erro: string } {
   const sku = String(formData.get("sku") ?? "").trim();
   const nome = String(formData.get("nome") ?? "").trim();
-  const categoria = String(formData.get("categoria") ?? "").trim();
+  const marcaId = String(formData.get("marca_id") ?? "").trim();
+  const categoriaId = String(formData.get("categoria_id") ?? "").trim();
   const descricao = String(formData.get("descricao") ?? "").trim();
   const precoTexto = String(formData.get("preco") ?? "").trim();
   const estoqueTexto = String(formData.get("estoque") ?? "").trim();
@@ -64,7 +76,8 @@ function validarDadosProduto(formData: FormData): DadosProdutoValidados | { erro
 
   if (!sku) return { erro: "O campo SKU é obrigatório." };
   if (!nome) return { erro: "O campo Nome é obrigatório." };
-  if (!categoria) return { erro: "O campo Categoria é obrigatório." };
+  if (!marcaId) return { erro: "O campo Marca é obrigatório." };
+  if (!categoriaId) return { erro: "O campo Categoria é obrigatório." };
 
   const preco = Number(precoTexto.replace(",", "."));
   if (!precoTexto || Number.isNaN(preco) || preco < 0) {
@@ -91,7 +104,8 @@ function validarDadosProduto(formData: FormData): DadosProdutoValidados | { erro
   return {
     sku,
     nome,
-    categoria,
+    marca_id: marcaId,
+    categoria_id: categoriaId,
     descricao: descricao || null,
     preco,
     estoque,
@@ -100,6 +114,11 @@ function validarDadosProduto(formData: FormData): DadosProdutoValidados | { erro
     altura_cm: alturaCm,
     largura_cm: larguraCm,
     comprimento_cm: comprimentoCm,
+    ean: campoOpcional(formData, "ean"),
+    ncm: campoOpcional(formData, "ncm"),
+    seo_titulo: campoOpcional(formData, "seo_titulo"),
+    seo_descricao: campoOpcional(formData, "seo_descricao"),
+    imagem_url: campoOpcional(formData, "imagem_url"),
     atributos: extrairAtributosTecnicos(formData),
   };
 }
@@ -115,7 +134,8 @@ export async function criarProduto(
   const { error } = await supabase.from("produtos").insert({
     sku: dados.sku,
     nome: dados.nome,
-    categoria: dados.categoria,
+    marca_id: dados.marca_id,
+    categoria_id: dados.categoria_id,
     descricao: dados.descricao,
     preco: dados.preco,
     estoque: dados.estoque,
@@ -124,6 +144,11 @@ export async function criarProduto(
     altura_cm: dados.altura_cm,
     largura_cm: dados.largura_cm,
     comprimento_cm: dados.comprimento_cm,
+    ean: dados.ean,
+    ncm: dados.ncm,
+    seo_titulo: dados.seo_titulo,
+    seo_descricao: dados.seo_descricao,
+    imagem_url: dados.imagem_url,
     atributos: dados.atributos,
   });
 
@@ -150,7 +175,8 @@ export async function atualizarProduto(
     .update({
       sku: dados.sku,
       nome: dados.nome,
-      categoria: dados.categoria,
+      marca_id: dados.marca_id,
+      categoria_id: dados.categoria_id,
       descricao: dados.descricao,
       preco: dados.preco,
       estoque: dados.estoque,
@@ -159,6 +185,11 @@ export async function atualizarProduto(
       altura_cm: dados.altura_cm,
       largura_cm: dados.largura_cm,
       comprimento_cm: dados.comprimento_cm,
+      ean: dados.ean,
+      ncm: dados.ncm,
+      seo_titulo: dados.seo_titulo,
+      seo_descricao: dados.seo_descricao,
+      imagem_url: dados.imagem_url,
       atributos: dados.atributos,
     })
     .eq("id", id);

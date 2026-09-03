@@ -3,24 +3,46 @@ import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import { formatarAtributosTecnicos } from "@/lib/produtos/formatar-atributos";
 import { BotaoAdicionarCarrinho } from "./botao-adicionar-carrinho";
 import type { Produto } from "@/types/database";
+import type { Metadata } from "next";
+
+interface ProdutoComRelacoes extends Produto {
+  marca: { nome: string } | null;
+  categoria: { nome: string } | null;
+}
 
 interface PaginaProdutoProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function PaginaProduto({ params }: PaginaProdutoProps) {
-  const { id } = await params;
+async function buscarProduto(id: string): Promise<ProdutoComRelacoes | null> {
   const supabase = await criarClienteSupabaseServidor();
 
   const { data: produtosEncontrados } = await supabase
     .from("produtos")
-    .select("*")
+    .select("*, marca:marcas(nome), categoria:categorias(nome)")
     .eq("id", id)
     .eq("ativo", true)
     .limit(1)
-    .returns<Produto[]>();
+    .returns<ProdutoComRelacoes[]>();
 
-  const produto = produtosEncontrados?.[0];
+  return produtosEncontrados?.[0] ?? null;
+}
+
+export async function generateMetadata({ params }: PaginaProdutoProps): Promise<Metadata> {
+  const { id } = await params;
+  const produto = await buscarProduto(id);
+
+  if (!produto) return {};
+
+  return {
+    title: produto.seo_titulo || produto.nome,
+    description: produto.seo_descricao || produto.descricao || undefined,
+  };
+}
+
+export default async function PaginaProduto({ params }: PaginaProdutoProps) {
+  const { id } = await params;
+  const produto = await buscarProduto(id);
 
   if (!produto) {
     notFound();
@@ -31,9 +53,26 @@ export default async function PaginaProduto({ params }: PaginaProdutoProps) {
   return (
     <div className="bg-page">
       <div className="mx-auto max-w-4xl px-4 py-12">
-        <span className="text-xs font-medium uppercase tracking-wide text-brand-green">
-          {produto.categoria}
-        </span>
+        {produto.imagem_url && (
+          // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image.
+          <img
+            src={produto.imagem_url}
+            alt={produto.nome}
+            className="mb-6 aspect-video w-full rounded-md object-cover"
+          />
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-brand-green">
+            {produto.categoria?.nome ?? "Sem categoria"}
+          </span>
+          {produto.marca?.nome && (
+            <>
+              <span className="text-xs text-muted">•</span>
+              <span className="text-xs font-medium text-muted">{produto.marca.nome}</span>
+            </>
+          )}
+        </div>
         <h1 className="mt-2 text-3xl font-semibold text-ink">{produto.nome}</h1>
         <p className="mt-1 text-sm font-medium text-muted">SKU: {produto.sku}</p>
 

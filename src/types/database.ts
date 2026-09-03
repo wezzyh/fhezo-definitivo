@@ -9,7 +9,10 @@ export interface Produto {
   id: string;
   sku: string;
   nome: string;
-  categoria: string;
+  /** Referência a categorias.id — categoria é entidade própria, não texto livre. */
+  categoria_id: string;
+  /** Referência a marcas.id — marca é entidade própria, não texto livre. */
+  marca_id: string;
   descricao: string | null;
   /**
    * Atributos técnicos variam bastante por categoria (ex.: diâmetro interno
@@ -25,8 +28,43 @@ export interface Produto {
   altura_cm: number;
   largura_cm: number;
   comprimento_cm: number;
+  /** Código de barras (EAN/GTIN), opcional. */
+  ean: string | null;
+  /** Código fiscal (NCM), usado na nota fiscal, opcional. */
+  ncm: string | null;
+  /** Título customizado para SEO da página do produto; usa o nome quando vazio. */
+  seo_titulo: string | null;
+  /** Meta descrição customizada para SEO da página do produto. */
+  seo_descricao: string | null;
+  /** URL da imagem principal do produto, opcional. */
+  imagem_url: string | null;
   /** Referência cruzada para o produto correspondente no Bling (ERP). */
   bling_produto_id: number | null;
+  /**
+   * Último saldoVirtualTotal visto no Bling numa sincronização — não é o
+   * estoque local, só a base pra calcular o delta de reposição (ver
+   * sincronizarEstoqueBling em src/app/admin/integracao/bling/actions.ts).
+   */
+  bling_estoque_ultimo_sincronizado: number | null;
+  created_at: string;
+}
+
+/** Marca de um produto — entidade própria (não texto livre). */
+export interface Marca {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  created_at: string;
+}
+
+/** Categoria de um produto — entidade própria, com hierarquia simples via categoria_pai_id. */
+export interface Categoria {
+  id: string;
+  nome: string;
+  slug: string;
+  /** Categoria-mãe, para subcategorias (ex.: Rolamentos > Rolamentos Rígidos). `null` = categoria de topo. */
+  categoria_pai_id: string | null;
+  ativo: boolean;
   created_at: string;
 }
 
@@ -97,6 +135,8 @@ export interface Integracao {
   access_token: string | null;
   refresh_token: string | null;
   expira_em: string | null;
+  /** Data/hora da última sincronização de estoque bem-sucedida (hoje só usado pelo provedor "bling"). */
+  ultima_sincronizacao: string | null;
   created_at: string;
   updated_at: string;
 }

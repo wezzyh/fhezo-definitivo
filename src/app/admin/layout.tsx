@@ -32,6 +32,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <Link href="/admin/produtos" className="hover:text-brand-green">
                 Produtos
               </Link>
+              <Link href="/admin/marcas" className="hover:text-brand-green">
+                Marcas
+              </Link>
+              <Link href="/admin/categorias" className="hover:text-brand-green">
+                Categorias
+              </Link>
             </nav>
           </div>
           <form action={sairAdmin}>

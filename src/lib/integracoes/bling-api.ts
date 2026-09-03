@@ -94,6 +94,7 @@ export interface ProdutoBlingResumo {
   id: number;
   codigo: string;
   nome: string;
+  preco?: number;
   estoque?: { saldoVirtualTotal?: number };
 }
 
@@ -175,18 +176,22 @@ interface CriarContatoBlingResposta {
   data: { id: number };
 }
 
-export async function criarContatoBling(
-  supabase: SupabaseClient,
-  dados: DadosContatoBling,
-): Promise<ResultadoBling<{ id: number }>> {
+function montarCorpoContatoBling(dados: DadosContatoBling): Record<string, unknown> {
   const corpo: Record<string, unknown> = {
     nome: dados.nome,
     numeroDocumento: dados.documento.replace(/\D/g, ""),
     tipo: dados.tipo,
+    // Obrigatório no PUT /contatos/{id} — sem ele o Bling rejeita com
+    // "Situação inválida" (confirmado direto na API real), mesmo sem
+    // nenhum campo "situacao" ter sido enviado. "A" = ativo.
+    situacao: "A",
     email: dados.email || undefined,
     telefone: dados.telefone || undefined,
   };
 
+  // Formato confirmado direto na API real do Bling (GET /contatos/{id}
+  // retorna essa mesma estrutura em endereco.geral): sem isso preenchido,
+  // o Bling recusa a emissão de NF-e por "pendência cadastral" no contato.
   if (dados.endereco) {
     corpo.endereco = {
       geral: {
@@ -201,23 +206,67 @@ export async function criarContatoBling(
     };
   }
 
+  return corpo;
+}
+
+export async function criarContatoBling(
+  supabase: SupabaseClient,
+  dados: DadosContatoBling,
+): Promise<ResultadoBling<{ id: number }>> {
   const resultado = await chamarBling<CriarContatoBlingResposta>(supabase, "/contatos", {
     method: "POST",
-    body: corpo,
+    body: montarCorpoContatoBling(dados),
   });
 
   if (!resultado.sucesso) return resultado;
   return { sucesso: true, dados: { id: resultado.dados.data.id } };
 }
 
-/** Busca o contato pelo CPF/CNPJ; se não existir no Bling, cria. */
+/**
+ * Atualiza um contato já existente no Bling (PUT /contatos/{id}) com os
+ * dados mais recentes que temos, incluindo endereço — usado quando o
+ * contato já existia lá (ex.: cadastrado manualmente, sem endereço) e
+ * precisamos completar os campos que o Bling exige para emitir NF-e.
+ */
+export async function atualizarContatoBling(
+  supabase: SupabaseClient,
+  contatoId: number,
+  dados: DadosContatoBling,
+): Promise<ResultadoBling<{ id: number }>> {
+  // PUT /contatos/{id} responde 204 No Content (sem corpo) quando dá
+  // certo — diferente do POST, que devolve {data: {id}}. Não dá pra ler
+  // o id da resposta aqui; já temos ele (é o parâmetro contatoId).
+  const resultado = await chamarBling<unknown>(supabase, `/contatos/${contatoId}`, {
+    method: "PUT",
+    body: montarCorpoContatoBling(dados),
+  });
+
+  if (!resultado.sucesso) return resultado;
+  return { sucesso: true, dados: { id: contatoId } };
+}
+
+/**
+ * Busca o contato pelo CPF/CNPJ. Se não existir no Bling, cria. Se já
+ * existir, ATUALIZA com os dados mais recentes (nome/email/telefone e,
+ * principalmente, endereço) — um contato criado manualmente no Bling antes
+ * desta integração pode não ter endereço completo, o que trava a emissão
+ * de NF-e depois. Se a atualização falhar, ainda assim segue com o ID já
+ * encontrado (o pedido de venda não depende do contato estar 100%
+ * completo — só a NF-e depende, e essa etapa ainda não está implementada).
+ */
 export async function buscarOuCriarContatoBling(
   supabase: SupabaseClient,
   dados: DadosContatoBling,
 ): Promise<ResultadoBling<{ id: number }>> {
   const busca = await buscarContatoBlingPorDocumento(supabase, dados.documento);
   if (!busca.sucesso) return busca;
-  if (busca.dados) return { sucesso: true, dados: { id: busca.dados } };
+
+  if (busca.dados) {
+    const atualizacao = await atualizarContatoBling(supabase, busca.dados, dados);
+    if (atualizacao.sucesso) return atualizacao;
+    return { sucesso: true, dados: { id: busca.dados } };
+  }
+
   return criarContatoBling(supabase, dados);
 }
 

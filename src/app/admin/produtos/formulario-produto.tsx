@@ -3,8 +3,12 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { criarMarcaRapida } from "../marcas/actions";
+import { criarCategoriaRapida } from "../categorias/actions";
+import { ordenarCategoriasComHierarquia, rotuloComIndentacao } from "@/lib/categorias/hierarquia";
 import type { EstadoFormularioProduto } from "./actions";
-import type { Produto } from "@/types/database";
+import type { Produto, Marca, Categoria } from "@/types/database";
 
 interface ParAtributo {
   chave: string;
@@ -13,6 +17,8 @@ interface ParAtributo {
 
 interface FormularioProdutoProps {
   produto?: Produto;
+  marcasIniciais: Marca[];
+  categoriasIniciais: Categoria[];
   action: (
     estadoAnterior: EstadoFormularioProduto,
     formData: FormData,
@@ -29,13 +35,34 @@ function atributosParaLista(
 
 const estadoInicial: EstadoFormularioProduto = {};
 
-export function FormularioProduto({ produto, action, textoBotao }: FormularioProdutoProps) {
+export function FormularioProduto({
+  produto,
+  marcasIniciais,
+  categoriasIniciais,
+  action,
+  textoBotao,
+}: FormularioProdutoProps) {
   const [estado, formAction, pendente] = useActionState(action, estadoInicial);
 
   const listaInicial = atributosParaLista(produto?.atributos);
   const [atributos, setAtributos] = useState<ParAtributo[]>(
     listaInicial.length > 0 ? listaInicial : [{ chave: "", valor: "" }],
   );
+
+  const [marcas, setMarcas] = useState<Marca[]>(marcasIniciais);
+  const [categorias, setCategorias] = useState<Categoria[]>(categoriasIniciais);
+  const [marcaSelecionada, setMarcaSelecionada] = useState(produto?.marca_id ?? "");
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(produto?.categoria_id ?? "");
+
+  const [mostrandoNovaMarca, setMostrandoNovaMarca] = useState(false);
+  const [nomeNovaMarca, setNomeNovaMarca] = useState("");
+  const [criandoMarca, setCriandoMarca] = useState(false);
+  const [erroNovaMarca, setErroNovaMarca] = useState<string | null>(null);
+
+  const [mostrandoNovaCategoria, setMostrandoNovaCategoria] = useState(false);
+  const [nomeNovaCategoria, setNomeNovaCategoria] = useState("");
+  const [criandoCategoria, setCriandoCategoria] = useState(false);
+  const [erroNovaCategoria, setErroNovaCategoria] = useState<string | null>(null);
 
   function adicionarAtributo() {
     setAtributos((atual) => [...atual, { chave: "", valor: "" }]);
@@ -50,6 +77,53 @@ export function FormularioProduto({ produto, action, textoBotao }: FormularioPro
       atual.map((item, i) => (i === indice ? { ...item, [campo]: valor } : item)),
     );
   }
+
+  async function lidarComCriarMarca() {
+    setErroNovaMarca(null);
+    setCriandoMarca(true);
+    const resultado = await criarMarcaRapida(nomeNovaMarca);
+    setCriandoMarca(false);
+
+    if (!resultado.sucesso) {
+      setErroNovaMarca(resultado.erro);
+      return;
+    }
+
+    setMarcas((atual) => [...atual, { id: resultado.id, nome: resultado.nome, ativo: true, created_at: "" }]);
+    setMarcaSelecionada(resultado.id);
+    setNomeNovaMarca("");
+    setMostrandoNovaMarca(false);
+  }
+
+  async function lidarComCriarCategoria() {
+    setErroNovaCategoria(null);
+    setCriandoCategoria(true);
+    const resultado = await criarCategoriaRapida(nomeNovaCategoria);
+    setCriandoCategoria(false);
+
+    if (!resultado.sucesso) {
+      setErroNovaCategoria(resultado.erro);
+      return;
+    }
+
+    setCategorias((atual) => [
+      ...atual,
+      {
+        id: resultado.id,
+        nome: resultado.nome,
+        slug: "",
+        categoria_pai_id: null,
+        ativo: true,
+        created_at: "",
+      },
+    ]);
+    setCategoriaSelecionada(resultado.id);
+    setNomeNovaCategoria("");
+    setMostrandoNovaCategoria(false);
+  }
+
+  const categoriasOrdenadas = ordenarCategoriasComHierarquia(categorias);
+  const marcasOrdenadas = [...marcas].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   return (
     <form action={formAction} className="space-y-6">
@@ -66,12 +140,113 @@ export function FormularioProduto({ produto, action, textoBotao }: FormularioPro
           </label>
           <Input id="nome" name="nome" defaultValue={produto?.nome} required />
         </div>
+
         <div>
-          <label htmlFor="categoria" className="mb-1 block text-sm font-medium text-ink">
-            Categoria *
-          </label>
-          <Input id="categoria" name="categoria" defaultValue={produto?.categoria} required />
+          <div className="mb-1 flex items-center justify-between">
+            <label htmlFor="marca_id" className="block text-sm font-medium text-ink">
+              Marca *
+            </label>
+            <button
+              type="button"
+              className="text-xs font-medium text-brand-green hover:underline"
+              onClick={() => setMostrandoNovaMarca((atual) => !atual)}
+            >
+              {mostrandoNovaMarca ? "Cancelar" : "+ nova marca"}
+            </button>
+          </div>
+          <Select
+            id="marca_id"
+            name="marca_id"
+            value={marcaSelecionada}
+            onChange={(evento) => setMarcaSelecionada(evento.target.value)}
+            required
+          >
+            <option value="" disabled>
+              Selecione uma marca
+            </option>
+            {marcasOrdenadas.map((marca) => (
+              <option key={marca.id} value={marca.id}>
+                {marca.nome}
+                {!marca.ativo && " (inativa)"}
+              </option>
+            ))}
+          </Select>
+
+          {mostrandoNovaMarca && (
+            <div className="mt-2 flex gap-2">
+              <Input
+                placeholder="Nome da nova marca"
+                value={nomeNovaMarca}
+                onChange={(evento) => setNomeNovaMarca(evento.target.value)}
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" disabled={criandoMarca} onClick={lidarComCriarMarca}>
+                {criandoMarca ? "Criando..." : "Criar"}
+              </Button>
+            </div>
+          )}
+          {erroNovaMarca && <p className="mt-1 text-xs text-red-600">{erroNovaMarca}</p>}
         </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <label htmlFor="categoria_id" className="block text-sm font-medium text-ink">
+              Categoria *
+            </label>
+            <button
+              type="button"
+              className="text-xs font-medium text-brand-green hover:underline"
+              onClick={() => setMostrandoNovaCategoria((atual) => !atual)}
+            >
+              {mostrandoNovaCategoria ? "Cancelar" : "+ nova categoria"}
+            </button>
+          </div>
+          <Select
+            id="categoria_id"
+            name="categoria_id"
+            value={categoriaSelecionada}
+            onChange={(evento) => setCategoriaSelecionada(evento.target.value)}
+            required
+          >
+            <option value="" disabled>
+              Selecione uma categoria
+            </option>
+            {categoriasOrdenadas.map((categoria) => (
+              <option key={categoria.id} value={categoria.id}>
+                {rotuloComIndentacao(categoria)}
+                {!categoria.ativo && " (inativa)"}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1 text-xs text-muted">
+            Para escolher uma categoria-mãe (hierarquia), use{" "}
+            <a href="/admin/categorias" className="underline">
+              Categorias
+            </a>
+            . Aqui só cria de topo.
+          </p>
+
+          {mostrandoNovaCategoria && (
+            <div className="mt-2 flex gap-2">
+              <Input
+                placeholder="Nome da nova categoria"
+                value={nomeNovaCategoria}
+                onChange={(evento) => setNomeNovaCategoria(evento.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={criandoCategoria}
+                onClick={lidarComCriarCategoria}
+              >
+                {criandoCategoria ? "Criando..." : "Criar"}
+              </Button>
+            </div>
+          )}
+          {erroNovaCategoria && <p className="mt-1 text-xs text-red-600">{erroNovaCategoria}</p>}
+        </div>
+
         <div>
           <label htmlFor="preco" className="mb-1 block text-sm font-medium text-ink">
             Preço (R$) *
@@ -177,6 +352,40 @@ export function FormularioProduto({ produto, action, textoBotao }: FormularioPro
       </div>
 
       <div>
+        <p className="text-sm font-medium text-ink">Identificação fiscal (opcional)</p>
+        <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="ean" className="mb-1 block text-xs font-medium text-muted">
+              EAN (código de barras)
+            </label>
+            <Input id="ean" name="ean" defaultValue={produto?.ean ?? ""} />
+          </div>
+          <div>
+            <label htmlFor="ncm" className="mb-1 block text-xs font-medium text-muted">
+              NCM
+            </label>
+            <Input id="ncm" name="ncm" defaultValue={produto?.ncm ?? ""} />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="imagem_url" className="mb-1 block text-sm font-medium text-ink">
+          Imagem principal (URL)
+        </label>
+        <Input
+          id="imagem_url"
+          name="imagem_url"
+          type="url"
+          placeholder="https://..."
+          defaultValue={produto?.imagem_url ?? ""}
+        />
+        <p className="mt-1 text-xs text-muted">
+          Ainda não há upload de arquivo — cole a URL de uma imagem já hospedada.
+        </p>
+      </div>
+
+      <div>
         <label htmlFor="descricao" className="mb-1 block text-sm font-medium text-ink">
           Descrição
         </label>
@@ -187,6 +396,35 @@ export function FormularioProduto({ produto, action, textoBotao }: FormularioPro
           rows={4}
           className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-ink outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green"
         />
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-ink">SEO (opcional)</p>
+        <div className="mt-2 space-y-3">
+          <div>
+            <label htmlFor="seo_titulo" className="mb-1 block text-xs font-medium text-muted">
+              Título SEO
+            </label>
+            <Input
+              id="seo_titulo"
+              name="seo_titulo"
+              defaultValue={produto?.seo_titulo ?? ""}
+              placeholder="Usa o nome do produto quando vazio"
+            />
+          </div>
+          <div>
+            <label htmlFor="seo_descricao" className="mb-1 block text-xs font-medium text-muted">
+              Meta descrição SEO
+            </label>
+            <textarea
+              id="seo_descricao"
+              name="seo_descricao"
+              defaultValue={produto?.seo_descricao ?? ""}
+              rows={2}
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-ink outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green"
+            />
+          </div>
+        </div>
       </div>
 
       <div>
