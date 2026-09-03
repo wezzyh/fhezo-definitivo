@@ -1,0 +1,61 @@
+import type { DadosMenu, DadosHome, DadosTema } from "./tipos";
+
+// Conteúdo padrão usado em dois casos: (1) fallback em runtime se a tabela
+// conteudo_site ainda não tiver nenhuma versão publicada de um tipo (ex.:
+// a migration 0012 ainda não rodou no ambiente), e (2) espelha o que a
+// migration grava como versão 1 publicada — o conteúdo que já existia
+// hardcoded no código antes desta mudança (nav.tsx, page.tsx, globals.css).
+// Se editar aqui, edite também supabase/migrations/0012_conteudo_site.sql.
+
+export const MENU_PADRAO: DadosMenu = {
+  itens: [
+    { id: "todos", rotulo: "Todos os produtos", tipo: "todos", categoria_id: null, href: "/produtos", ordem: 1, filhos: [] },
+    { id: "rolamentos", rotulo: "Rolamentos", tipo: "link", categoria_id: null, href: "/produtos", ordem: 2, filhos: [] },
+    { id: "engrenagens", rotulo: "Engrenagens", tipo: "link", categoria_id: null, href: "/produtos", ordem: 3, filhos: [] },
+    { id: "correntes", rotulo: "Correntes", tipo: "link", categoria_id: null, href: "/produtos", ordem: 4, filhos: [] },
+    { id: "graxas", rotulo: "Graxas e Lubrificantes", tipo: "link", categoria_id: null, href: "/produtos", ordem: 5, filhos: [] },
+    { id: "ferramentas", rotulo: "Ferramentas", tipo: "link", categoria_id: null, href: "/produtos", ordem: 6, filhos: [] },
+    { id: "parafusos", rotulo: "Parafusos e Porcas", tipo: "link", categoria_id: null, href: "/produtos", ordem: 7, filhos: [] },
+  ],
+};
+
+export const HOME_PADRAO: DadosHome = {
+  secoes: [
+    {
+      id: "hero",
+      tipo: "hero",
+      titulo: "Componentes industriais de precisão para manter sua operação em movimento",
+      subtitulo:
+        "Rolamentos, engrenagens, correntes, graxas, ferramentas, parafusos e porcas especiais, com estoque pronto e atendimento técnico especializado.",
+      cta_texto: "Ver catálogo de produtos",
+      cta_href: "/produtos",
+      ordem: 1,
+      ativo: true,
+    },
+    {
+      id: "produtos-destaque",
+      tipo: "produtos_destaque",
+      titulo: "Produtos em destaque",
+      subtitulo: "Uma seleção dos itens mais procurados pelos nossos clientes.",
+      modo: "automatico",
+      produto_ids: [],
+      categoria_id: null,
+      limite: 4,
+      ordem: 2,
+      ativo: true,
+    },
+  ],
+};
+
+export const TEMA_PADRAO: DadosTema = {
+  cores: {
+    brand_green: "#009b6c",
+    brand_green_dark: "#007a54",
+    dark: "#0d0d0d",
+    dark_2: "#1a1a1a",
+    page: "#f5f5f3",
+    ink: "#1a1a1a",
+    muted: "#5f5e5a",
+    warning: "#e8b93a",
+  },
+};

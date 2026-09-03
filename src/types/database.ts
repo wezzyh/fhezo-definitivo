@@ -140,3 +140,38 @@ export interface Integracao {
   created_at: string;
   updated_at: string;
 }
+
+export type TipoConteudoSite = "menu" | "home" | "tema";
+
+/**
+ * Conteúdo do site versionado (menu, home, tema), editável pelo admin sem
+ * deploy. Cada linha é uma versão IMUTÁVEL de um "tipo" — nunca é
+ * sobrescrita, só marcada publicado=true/false (no máximo uma versão
+ * publicada por tipo, garantido por índice único parcial no banco).
+ * Formato de "dados" depende de "tipo" — ver src/lib/conteudo/tipos.ts.
+ */
+export interface ConteudoSite {
+  id: string;
+  tipo: TipoConteudoSite;
+  dados: Record<string, unknown>;
+  versao: number;
+  publicado: boolean;
+  created_at: string;
+  created_by: string | null;
+}
+
+/**
+ * Banner do site, versionado POR ITEM — diferente de conteudo_site,
+ * "banner_id" é estável entre versões (o "id" da linha muda a cada
+ * versão), permitindo editar/publicar/restaurar um banner sem afetar os
+ * demais. Formato de "dados" — ver DadosBanner em src/lib/conteudo/tipos.ts.
+ */
+export interface Banner {
+  id: string;
+  banner_id: string;
+  dados: Record<string, unknown>;
+  versao: number;
+  publicado: boolean;
+  created_at: string;
+  created_by: string | null;
+}

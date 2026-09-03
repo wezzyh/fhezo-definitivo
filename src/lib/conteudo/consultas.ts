@@ -1,0 +1,105 @@
+import { unstable_cache } from "next/cache";
+import { criarClienteSupabasePublico } from "@/lib/supabase/publico";
+import type { ConteudoSite, TipoConteudoSite, Banner } from "@/types/database";
+import type { DadosMenu, DadosHome, DadosTema, DadosBanner } from "./tipos";
+import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO } from "./padroes";
+
+// Leituras públicas (site) de conteúdo versionado — sempre a versão mais
+// recente com publicado=true de cada tipo, nunca o histórico. Cacheadas
+// com unstable_cache: a publicação/restauração no admin invalida na hora
+// via updateTag (ver actions.ts de cada tela em src/app/admin/conteudo/*
+// — updateTag em vez de revalidateTag porque roda dentro de Server Actions
+// e dá semântica "read-your-own-writes": o admin vê o efeito imediatamente
+// após publicar, sem esperar uma janela de stale-while-revalidate),
+// e REVALIDATE_SEGUNDOS é só uma rede de segurança para o caso de o dado
+// mudar por fora desse fluxo.
+//
+// Usa um cliente Supabase sem cookies (criarClienteSupabasePublico) porque
+// unstable_cache proíbe chamar APIs dinâmicas (como cookies()) no corpo da
+// função cacheada — o cliente "de servidor" normal (criarClienteSupabaseServidor)
+// não pode ser usado aqui. Páginas do /admin continuam lendo direto pelo
+// cliente normal, sem cache, para sempre editar contra o dado mais atual.
+const REVALIDATE_SEGUNDOS = 300;
+
+async function buscarPublicado(tipo: TipoConteudoSite): Promise<ConteudoSite | null> {
+  const supabase = criarClienteSupabasePublico();
+  const { data } = await supabase
+    .from("conteudo_site")
+    .select("*")
+    .eq("tipo", tipo)
+    .eq("publicado", true)
+    .maybeSingle<ConteudoSite>();
+  return data;
+}
+
+export const obterMenuPublicado = unstable_cache(
+  async (): Promise<DadosMenu> => {
+    const conteudo = await buscarPublicado("menu");
+    return (conteudo?.dados as DadosMenu | undefined) ?? MENU_PADRAO;
+  },
+  ["conteudo-site-menu"],
+  { tags: ["conteudo-menu"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+export const obterHomePublicada = unstable_cache(
+  async (): Promise<DadosHome> => {
+    const conteudo = await buscarPublicado("home");
+    return (conteudo?.dados as DadosHome | undefined) ?? HOME_PADRAO;
+  },
+  ["conteudo-site-home"],
+  { tags: ["conteudo-home"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+export const obterTemaPublicado = unstable_cache(
+  async (): Promise<DadosTema> => {
+    const conteudo = await buscarPublicado("tema");
+    return (conteudo?.dados as DadosTema | undefined) ?? TEMA_PADRAO;
+  },
+  ["conteudo-site-tema"],
+  { tags: ["conteudo-tema"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+export const obterBannersPublicados = unstable_cache(
+  async (): Promise<Banner[]> => {
+    const supabase = criarClienteSupabasePublico();
+    const { data } = await supabase.from("banners").select("*").eq("publicado", true).returns<Banner[]>();
+    return data ?? [];
+  },
+  ["banners-publicados"],
+  { tags: ["conteudo-banners"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+/** Mapa categoria_id → slug, para resolver o href de itens de menu do tipo "categoria" (ver resolverHrefItemMenu). Só categorias ativas. */
+export const obterMapaSlugsCategorias = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    const supabase = criarClienteSupabasePublico();
+    const { data } = await supabase
+      .from("categorias")
+      .select("id, slug")
+      .eq("ativo", true)
+      .returns<{ id: string; slug: string }[]>();
+    return Object.fromEntries((data ?? []).map((categoria) => [categoria.id, categoria.slug]));
+  },
+  ["categorias-slugs"],
+  { tags: ["categorias"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+/**
+ * Filtra banners publicados para o que deve aparecer AGORA: ativo=true e
+ * dentro da janela de vigência (data_inicio/data_fim). Deliberadamente FORA
+ * do cache acima — a lista cacheada inclui banners futuros/expirados, e
+ * esse filtro por data precisa reavaliar a cada request (o cache não é
+ * invalidado só porque o relógio virou o dia). Ordenado por "ordem".
+ */
+export function bannersVisiveisAgora(banners: Banner[]): Banner[] {
+  const agora = Date.now();
+  return banners
+    .filter((banner) => {
+      const dados = banner.dados as unknown as DadosBanner;
+      if (!dados.ativo) return false;
+      if (dados.data_inicio && new Date(dados.data_inicio).getTime() > agora) return false;
+      if (dados.data_fim && new Date(dados.data_fim).getTime() + 24 * 60 * 60 * 1000 - 1 < agora) return false;
+      return true;
+    })
+    .sort((a, b) => (a.dados as unknown as DadosBanner).ordem - (b.dados as unknown as DadosBanner).ordem);
+}

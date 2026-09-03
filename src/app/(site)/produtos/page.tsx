@@ -8,21 +8,52 @@ interface ProdutoComRelacoes extends Produto {
   categoria: { nome: string } | null;
 }
 
-export default async function PaginaProdutos() {
+interface PaginaProdutosProps {
+  searchParams: Promise<{ categoria?: string }>;
+}
+
+// Suporta filtro por categoria via "?categoria=<slug>" — resolve o TODO que
+// existia em nav.tsx (itens de menu do tipo "categoria" geram esse link
+// automaticamente, ver src/lib/conteudo/resolver-href-menu.ts). Filtro é
+// exato por categoria_id — não inclui subcategorias.
+export default async function PaginaProdutos({ searchParams }: PaginaProdutosProps) {
+  const { categoria: categoriaSlug } = await searchParams;
   const supabase = await criarClienteSupabaseServidor();
-  const { data: produtos, error } = await supabase
+
+  let categoriaAtual: { id: string; nome: string } | null = null;
+  if (categoriaSlug) {
+    const { data } = await supabase
+      .from("categorias")
+      .select("id, nome")
+      .eq("slug", categoriaSlug)
+      .maybeSingle<{ id: string; nome: string }>();
+    categoriaAtual = data;
+  }
+
+  let query = supabase
     .from("produtos")
     .select("*, marca:marcas(nome), categoria:categorias(nome)")
     .eq("ativo", true)
-    .order("nome")
-    .returns<ProdutoComRelacoes[]>();
+    .order("nome");
+
+  if (categoriaAtual) {
+    query = query.eq("categoria_id", categoriaAtual.id);
+  }
+
+  const { data: produtos, error } = await query.returns<ProdutoComRelacoes[]>();
 
   return (
     <div className="bg-page">
       <div className="mx-auto max-w-6xl px-4 py-12">
-        <h1 className="text-2xl font-semibold text-ink">Catálogo de Produtos</h1>
+        <h1 className="text-2xl font-semibold text-ink">{categoriaAtual ? categoriaAtual.nome : "Catálogo de Produtos"}</h1>
         <p className="mt-1 text-muted">
-          Rolamentos, engrenagens, correntes, graxas, ferramentas, parafusos e porcas especiais.
+          {categoriaAtual ? (
+            <Link href="/produtos" className="text-brand-green hover:underline">
+              Ver todos os produtos
+            </Link>
+          ) : (
+            "Rolamentos, engrenagens, correntes, graxas, ferramentas, parafusos e porcas especiais."
+          )}
         </p>
 
         {error && (
