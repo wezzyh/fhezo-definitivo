@@ -5,19 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { buscarResumoPedido, type ResumoPedidoConfirmacao } from "./actions";
+import { TEXTO_STATUS_PEDIDO as TEXTO_STATUS } from "@/lib/pedidos/status";
 
 function formatarMoeda(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
-
-const TEXTO_STATUS: Record<string, string> = {
-  pendente: "Aguardando confirmação de pagamento",
-  pago: "Pagamento confirmado",
-  em_separacao: "Em separação",
-  enviado: "Enviado",
-  entregue: "Entregue",
-  cancelado: "Cancelado",
-};
 
 const TEXTO_FORMA_PAGAMENTO: Record<string, string> = {
   pix: "Pix",

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
-import { gerarSlug, descendentesDe } from "@/lib/categorias/hierarquia";
+import { descendentesDe } from "@/lib/categorias/hierarquia";
+import { gerarSlugUnico } from "@/lib/categorias/slug-unico";
 import type { Categoria } from "@/types/database";
 
 export interface EstadoFormularioCategoria {
@@ -25,26 +26,6 @@ function validarDadosCategoria(formData: FormData): DadosCategoriaValidados | { 
   const ativo = formData.get("ativo") === "on";
 
   return { nome, categoriaPaiId, ativo };
-}
-
-/** Garante um slug único, acrescentando um sufixo numérico em caso de colisão. */
-async function gerarSlugUnico(
-  supabase: Awaited<ReturnType<typeof criarClienteSupabaseServidor>>,
-  nome: string,
-  idParaIgnorar?: string,
-): Promise<string> {
-  const base = gerarSlug(nome) || "categoria";
-  let candidato = base;
-  let sufixo = 2;
-
-  for (;;) {
-    let query = supabase.from("categorias").select("id").eq("slug", candidato);
-    if (idParaIgnorar) query = query.neq("id", idParaIgnorar);
-    const { data } = await query.maybeSingle<{ id: string }>();
-    if (!data) return candidato;
-    candidato = `${base}-${sufixo}`;
-    sufixo++;
-  }
 }
 
 export async function criarCategoria(

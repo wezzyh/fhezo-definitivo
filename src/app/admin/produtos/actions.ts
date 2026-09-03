@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
+import { existeSkuDuplicado, existeEanDuplicado } from "@/lib/produtos/duplicatas";
 
 export interface EstadoFormularioProduto {
   erro?: string;
@@ -131,6 +132,14 @@ export async function criarProduto(
   if ("erro" in dados) return dados;
 
   const supabase = await criarClienteSupabaseServidor();
+
+  if (await existeSkuDuplicado(supabase, dados.sku)) {
+    return { erro: `Já existe um produto com o SKU "${dados.sku}" (ignorando maiúsculas/espaços).` };
+  }
+  if (dados.ean && (await existeEanDuplicado(supabase, dados.ean))) {
+    return { erro: `Já existe um produto com o EAN "${dados.ean}".` };
+  }
+
   const { error } = await supabase.from("produtos").insert({
     sku: dados.sku,
     nome: dados.nome,
@@ -170,6 +179,14 @@ export async function atualizarProduto(
   if ("erro" in dados) return dados;
 
   const supabase = await criarClienteSupabaseServidor();
+
+  if (await existeSkuDuplicado(supabase, dados.sku, id)) {
+    return { erro: `Já existe um produto com o SKU "${dados.sku}" (ignorando maiúsculas/espaços).` };
+  }
+  if (dados.ean && (await existeEanDuplicado(supabase, dados.ean, id))) {
+    return { erro: `Já existe um produto com o EAN "${dados.ean}".` };
+  }
+
   const { error } = await supabase
     .from("produtos")
     .update({

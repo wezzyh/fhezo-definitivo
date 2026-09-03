@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
 import { atualizarStatusPedidoPorPagamento } from "@/lib/pagamento/pedidos";
+import { registrarEventoIntegracao } from "@/lib/integracoes/eventos";
 
 // Webhook do Asaas: recebe eventos de cobrança (PAYMENT_CONFIRMED,
 // PAYMENT_RECEIVED, PAYMENT_OVERDUE etc.) e atualiza o status do pedido
@@ -40,10 +41,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "Corpo do webhook inválido." }, { status: 400 });
   }
 
+  const supabase = criarClienteSupabaseAdmin();
+
   try {
-    const supabase = criarClienteSupabaseAdmin();
     await atualizarStatusPedidoPorPagamento(supabase, paymentId, status);
-  } catch {
+    await registrarEventoIntegracao(supabase, {
+      provedor: "asaas",
+      evento: "webhook_pagamento",
+      sucesso: true,
+    });
+  } catch (erro) {
+    await registrarEventoIntegracao(supabase, {
+      provedor: "asaas",
+      evento: "webhook_pagamento",
+      sucesso: false,
+      mensagemErro: erro instanceof Error ? erro.message : "Erro desconhecido ao processar o webhook.",
+    });
     return NextResponse.json({ erro: "Falha ao processar o webhook." }, { status: 500 });
   }
 

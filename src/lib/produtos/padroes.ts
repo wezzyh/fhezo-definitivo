@@ -58,3 +58,29 @@ export async function obterOuCriarCategoriaPadrao(supabase: SupabaseClient): Pro
 
   return nova.id;
 }
+
+// Variantes só-leitura (nunca criam), usadas pelo score de qualidade e
+// pelos filtros "Sem marca"/"Sem categoria" em /admin/produtos — essa
+// página não deve ter o efeito colateral de criar registros só por ser
+// visitada. Devolvem `null` se a marca/categoria padrão ainda não existir
+// (nenhum produto do Bling foi sincronizado ainda, por exemplo).
+
+export async function buscarIdMarcaPadrao(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase
+    .from("marcas")
+    .select("id")
+    .eq("nome", NOME_MARCA_PADRAO)
+    .maybeSingle<{ id: string }>();
+
+  return data?.id ?? null;
+}
+
+export async function buscarIdCategoriaPadrao(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase
+    .from("categorias")
+    .select("id")
+    .eq("slug", SLUG_CATEGORIA_PADRAO)
+    .maybeSingle<{ id: string }>();
+
+  return data?.id ?? null;
+}

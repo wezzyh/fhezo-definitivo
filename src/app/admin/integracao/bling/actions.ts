@@ -6,6 +6,7 @@ import { buscarTodosProdutosBling } from "@/lib/integracoes/bling-api";
 import { enviarPedidoParaBling } from "@/lib/integracoes/bling-pedidos";
 import { PROVEDOR_BLING } from "@/lib/integracoes/bling";
 import { obterOuCriarCategoriaPadrao, obterOuCriarMarcaPadrao } from "@/lib/produtos/padroes";
+import { registrarEventoIntegracao } from "@/lib/integracoes/eventos";
 import type { Produto } from "@/types/database";
 
 // Server Actions da seção "Integrações" do /admin: sincronização manual de
@@ -74,6 +75,12 @@ export async function sincronizarEstoqueBling(): Promise<ResultadoSincronizacaoB
 
   const produtosBling = await buscarTodosProdutosBling(supabase);
   if (!produtosBling.sucesso) {
+    await registrarEventoIntegracao(supabase, {
+      provedor: "bling",
+      evento: "sincronizar_estoque",
+      sucesso: false,
+      mensagemErro: produtosBling.mensagem,
+    });
     return RESULTADO_ERRO(produtosBling.mensagem);
   }
 
@@ -159,6 +166,13 @@ export async function sincronizarEstoqueBling(): Promise<ResultadoSincronizacaoB
 
     if (!erroInsert) {
       criados.push({ sku: produtoBling.codigo, nome: produtoBling.nome, precoZerado });
+    } else {
+      await registrarEventoIntegracao(supabase, {
+        provedor: "bling",
+        evento: "sincronizar_estoque",
+        sucesso: false,
+        mensagemErro: `Falha ao criar produto local para o SKU "${produtoBling.codigo}": ${erroInsert.message}`,
+      });
     }
   }
 
@@ -166,6 +180,12 @@ export async function sincronizarEstoqueBling(): Promise<ResultadoSincronizacaoB
     .from("integracoes")
     .update({ ultima_sincronizacao: new Date().toISOString() })
     .eq("provedor", PROVEDOR_BLING);
+
+  await registrarEventoIntegracao(supabase, {
+    provedor: "bling",
+    evento: "sincronizar_estoque",
+    sucesso: true,
+  });
 
   revalidatePath("/admin");
   revalidatePath("/admin/produtos");
