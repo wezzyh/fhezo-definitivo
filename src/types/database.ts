@@ -79,6 +79,50 @@ export interface Cliente {
   created_at: string;
 }
 
+/**
+ * Dados de CRM B2B enxuto de um cliente — tabela própria "clientes_crm",
+ * 1:1 com "clientes" (ver nota de arquitetura na migração 0013 sobre por
+ * que não são colunas direto em "clientes"). "Última compra"/"último
+ * contato" NÃO ficam aqui — são calculados a partir de "pedidos" (ver
+ * ClienteCrmResumo).
+ */
+export interface ClienteCrm {
+  cliente_id: string;
+  /** Contato principal dentro da empresa (relevante sobretudo para PJ). */
+  nome_comprador: string | null;
+  segmento: string | null;
+  /** Texto livre, ex.: "Ligar dia 15 para renovar cotação". */
+  proxima_acao: string | null;
+  proxima_acao_data: string | null;
+  valor_potencial: number | null;
+  observacoes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Linha da view "clientes_crm_resumo" — junta clientes + clientes_crm +
+ * a data do pedido mais recente do cliente. Usada em /admin/clientes.
+ */
+export interface ClienteCrmResumo {
+  cliente_id: string;
+  tipo: TipoPessoa;
+  nome: string;
+  documento: string;
+  email: string;
+  telefone: string | null;
+  cliente_criado_em: string;
+  nome_comprador: string | null;
+  segmento: string | null;
+  proxima_acao: string | null;
+  proxima_acao_data: string | null;
+  valor_potencial: number | null;
+  observacoes: string | null;
+  crm_atualizado_em: string | null;
+  /** Data do pedido mais recente do cliente — null se nunca comprou. */
+  ultima_compra_em: string | null;
+}
+
 export type StatusPedido =
   | "pendente"
   | "pago"
@@ -123,6 +167,39 @@ export interface PedidoItem {
   produto_id: string;
   quantidade: number;
   preco_unitario: number;
+}
+
+export type StatusTicket = "aberto" | "em_andamento" | "resolvido" | "fechado";
+export type PrioridadeTicket = "baixa" | "normal" | "alta";
+export type AutorRespostaTicket = "cliente" | "admin";
+
+/**
+ * Ticket de suporte/atendimento — criado manualmente pelo admin por
+ * enquanto (sem formulário público ainda, ver migração 0014).
+ * "mensagem" é o relato inicial; a conversa continua em
+ * "ticket_respostas" (ver TicketResposta).
+ */
+export interface Ticket {
+  id: string;
+  /** Opcional: o ticket pode vir de alguém ainda não cadastrado em "clientes". */
+  cliente_id: string | null;
+  /** Opcional: vincula o ticket a um pedido específico. */
+  pedido_id: string | null;
+  assunto: string;
+  mensagem: string;
+  status: StatusTicket;
+  prioridade: PrioridadeTicket;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Uma mensagem no histórico de conversa de um ticket. */
+export interface TicketResposta {
+  id: string;
+  ticket_id: string;
+  autor: AutorRespostaTicket;
+  mensagem: string;
+  created_at: string;
 }
 
 /**

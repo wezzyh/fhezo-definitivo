@@ -13,7 +13,7 @@ import { buscarIntegracaoBling, montarUrlAutorizacaoBling, obterTokenValidoBling
 import { BotaoSincronizarEstoqueBling } from "./integracao/bling/botao-sincronizar-estoque";
 import { BotaoReenviarPedidoBling } from "./integracao/bling/botao-reenviar-pedido";
 import { Card } from "@/components/ui/card";
-import { isoDiasAtras } from "@/lib/data/tempo";
+import { isoDiasAtras, isoDataMaisDias } from "@/lib/data/tempo";
 import type { Pedido, Produto } from "@/types/database";
 
 // Abaixo deste valor de estoque, o produto entra na seção "Estoque
@@ -53,6 +53,7 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
   const supabase = await criarClienteSupabaseServidor();
 
   const desdeEventosRecentes = isoDiasAtras(DIAS_EVENTOS_RECENTES);
+  const hojeIso = isoDataMaisDias(0);
 
   const [
     { data: produtos },
@@ -63,6 +64,8 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
     { data: pedidosNaoSincronizados },
     { count: produtosSemImagem },
     { count: eventosFalhosRecentes },
+    { count: clientesComAcaoAtrasada },
+    { count: ticketsPendentes },
     tokenMelhorEnvioValido,
     tokenBlingValido,
   ] = await Promise.all([
@@ -92,6 +95,14 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
       .select("id", { count: "exact", head: true })
       .eq("sucesso", false)
       .gte("created_at", desdeEventosRecentes),
+    supabase
+      .from("clientes_crm")
+      .select("cliente_id", { count: "exact", head: true })
+      .lt("proxima_acao_data", hojeIso),
+    supabase
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["aberto", "em_andamento"]),
     // Tenta de verdade renovar o token (mesmo mecanismo usado sempre que
     // o app faz uma chamada real ao Melhor Envio/Bling) em vez de só
     // comparar expira_em com agora: o access_token é de curta duração e
@@ -196,10 +207,15 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
     },
     {
       titulo: "Tickets pendentes",
-      contagem: null,
-      textoPlaceholder: "Módulo ainda não implementado",
-      href: null,
-      descricao: "Suporte ao cliente — fase futura.",
+      contagem: ticketsPendentes ?? 0,
+      href: "/admin/tickets",
+      descricao: "Tickets de suporte abertos ou em andamento.",
+    },
+    {
+      titulo: "Clientes com ação atrasada",
+      contagem: clientesComAcaoAtrasada ?? 0,
+      href: "/admin/clientes?atrasada=1",
+      descricao: "Próxima ação de venda com data já vencida.",
     },
     {
       titulo: "Pedidos não enviados ao Bling",

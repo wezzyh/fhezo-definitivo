@@ -9,3 +9,8 @@
 export function isoDiasAtras(dias: number): string {
   return new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
 }
+
+/** Data de hoje + N dias, no formato YYYY-MM-DD — comparável direto com colunas `date` do Postgres (ex.: clientes_crm.proxima_acao_data). */
+export function isoDataMaisDias(dias: number): string {
+  return new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}

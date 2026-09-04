@@ -70,6 +70,30 @@ Tela nova (não existia antes desta rodada). Lista com filtro por status via que
 
 **Sem paginação de verdade ainda** (`LIMITE_PEDIDOS = 200`, só um limite alto) — se o volume de pedidos crescer, vale aplicar o mesmo padrão de paginação real já usado em `/admin/produtos`.
 
+### Clientes / CRM B2B (`src/app/admin/clientes/`, migration 0013)
+
+CRM enxuto — **não** um sistema de CRM completo: sem pipeline de vendas/funil/"negócios", sem timeline de interações. Só campos simples por cliente + o histórico de pedidos que já existia.
+
+- **Tabela separada `clientes_crm`** (1:1 com `clientes` via `cliente_id`, `on delete cascade`), em vez de colunas direto em `clientes`. Motivo: `clientes` é escrita pelo checkout público via service_role e é lida por um fluxo que não tem nada a ver com CRM; RLS é por LINHA, não por coluna, então se um dia existir portal do cliente (`auth_user_id` + política "cliente vê a própria linha"), colunas de CRM dentro de `clientes` vazariam automaticamente pro cliente final. `clientes_crm` nunca tem nenhuma política para `anon` — leitura e escrita restritas a `authenticated`, mesmo padrão de `integracoes`/`eventos_integracao`.
+- Campos: `nome_comprador` (contato principal, relevante pra PJ), `segmento` (lista pré-definida em `src/lib/clientes/segmentos.ts`, mas a coluna é `text` livre sem CHECK — mesmo padrão de `pedidos.status`/`forma_pagamento`, valida no app), `proxima_acao` (texto livre), `proxima_acao_data` (`date`, opcional), `valor_potencial` (`numeric`), `observacoes`.
+- **"Última compra"/"último contato" não são colunas** — são calculados via `MAX(pedidos.created_at)` numa view `clientes_crm_resumo` (junta `clientes` + `clientes_crm` + o pedido mais recente por `lateral join`). "Último contato" hoje é literalmente a mesma data de "última compra", de propósito — não existe (nem foi criado agora) um sistema de registro de contatos separado.
+- A view usa `security_invoker = true` (Postgres 15+, mesma técnica das funções `publicar_conteudo_site`/`publicar_banner` da migração 0012) — sem isso a RLS das tabelas de base seria ignorada e a view viraria uma porta lateral sem RLS.
+- `/admin/clientes`: lista só PJ, com filtros por segmento, "sem próxima ação definida" (`proxima_acao_data is null`), "ação atrasada" (`proxima_acao_data < hoje`) e "sem compra há mais de N dias" (N configurável no próprio formulário de filtro, padrão 90) — filtros empurrados pra dentro da query (`.eq`/`.is`/`.lt`/`.or`), nunca em memória, mesmo padrão de `/admin/produtos`. `/admin/clientes/[id]`: dados cadastrais (read-only, vêm do checkout) + formulário de CRM (editável) + histórico de pedidos do cliente.
+- `src/lib/clientes/proxima-acao.ts` classifica a urgência (`atrasada` / `hoje_ou_amanha` / `futura` / `sem_data`) — mesma função usada na listagem para colorir o badge da próxima ação.
+- Dashboard: item "Clientes com ação atrasada" na Central de ações (`clientes_crm.proxima_acao_data < hoje`), linkando pra `/admin/clientes?atrasada=1`.
+
+### Tickets de suporte (`src/app/admin/tickets/`, `src/lib/tickets/`, migration 0014)
+
+Módulo básico — substitui o placeholder "Tickets pendentes" do dashboard por dado real. Escopo deliberadamente enxuto: **sem formulário público** ainda (cliente não abre ticket direto no site) — todo ticket é criado manualmente pelo admin em `/admin/tickets/novo`, tipicamente registrando uma reclamação recebida por telefone/WhatsApp.
+
+- **`tickets`**: `cliente_id` e `pedido_id` são ambos opcionais (`on delete set null`) — um ticket pode vir de alguém ainda não cadastrado em `clientes`, ou não estar ligado a nenhum pedido específico. `status` (`aberto | em_andamento | resolvido | fechado`) e `prioridade` (`baixa | normal | alta`) são `text` livre sem CHECK constraint, validados no app — mesmo padrão de `pedidos.status`. `updated_at` é mantido por trigger (`tickets_atualizar_updated_at`), copiando o padrão já usado em `integracoes` (migração 0002), não setado manualmente pelo app feito em `clientes_crm`.
+- **`ticket_respostas`**: histórico de conversa, **append-only** (sem política de UPDATE/DELETE — mensagem enviada não é editada nem apagada). `autor` (`cliente | admin`) existe mesmo sem formulário público: o admin pode registrar tanto uma resposta própria quanto algo que o cliente disse por telefone, pra manter o histórico da conversa completo desde já.
+- `tickets.mensagem` é o relato inicial (preenchido na criação do ticket) — a conversa em si (`ticket_respostas`) começa vazia e cresce só com respostas subsequentes; a página de detalhe renderiza os dois juntos, na ordem certa.
+- RLS: `authenticated` apenas, em ambas as tabelas — mesmo padrão de `clientes_crm`, nunca exposto a `anon` (não existe leitura/escrita pública ainda).
+- `/admin/tickets`: filtros por status e prioridade empurrados pra query (`.eq`); a ordenação "prioridade primeiro, depois data" busca ordenado por `created_at desc` no banco e reordena só pelo peso da prioridade em memória — como `Array.sort` é estável, a ordem de data dentro de cada prioridade é preservada. Mesmo raciocínio de "sem paginação real ainda" de `/admin/pedidos` (`LIMITE_TICKETS = 300`).
+- `/admin/tickets/[id]`: conversa completa + formulário de resposta (chama a Server Action direto do client, sem `<form action>`, porque depois de responder o componente limpa o campo e chama `router.refresh()` pra mostrar a nova mensagem sem recarregar a página manualmente — troca de status na mesma tela faz o mesmo). Esse `router.refresh()` depois de uma Server Action é uma escolha nova neste módulo (as telas de pedidos/clientes não precisavam, porque a mudança não precisa aparecer imediatamente na mesma tela).
+- Dashboard: "Tickets pendentes" agora conta `tickets.status in ('aberto', 'em_andamento')` de verdade, linkando pra `/admin/tickets` (sem filtro — a contagem soma dois status, e a listagem hoje só filtra um de cada vez).
+
 ### Integrações (`src/lib/integracoes/`)
 
 - **Bling**: OAuth (`bling.ts`), cliente de API de recursos com renovação automática de token e retry em 429 (`bling-api.ts`), envio de pedido de venda (`bling-pedidos.ts`), sincronização de estoque (`src/app/admin/integracao/bling/actions.ts`).
@@ -80,7 +104,7 @@ Tela nova (não existia antes desta rodada). Lista com filtro por status via que
 
 ### Dashboard admin (`src/app/admin/page.tsx`)
 
-Reescrito nesta rodada em torno de uma **"Central de ações"**: 8 itens, cada um com contagem colorida (verde=0/tudo certo, âmbar=precisa de atenção) e link direto pra resolver — nunca só um número decorativo. Itens: Pedidos para separar, Pagamentos falhos, Produtos sem imagem, Estoque baixo, Integrações com erro, Tickets pendentes (placeholder — módulo de suporte é fase futura, não implementado), Pedidos não enviados ao Bling, Webhooks/retries pendentes.
+Reescrito em torno de uma **"Central de ações"**: 9 itens, cada um com contagem colorida (verde=0/tudo certo, âmbar=precisa de atenção) e link direto pra resolver — nunca só um número decorativo. Itens: Pedidos para separar, Pagamentos falhos, Produtos sem imagem, Estoque baixo, Integrações com erro, Tickets pendentes (`tickets.status in ('aberto','em_andamento')`, dado real desde a Fase 5 — antes era um placeholder fixo em 0), Clientes com ação atrasada, Pedidos não enviados ao Bling, Webhooks/retries pendentes.
 
 Cards do topo (fora da Central de ações) ficaram só com métricas realmente não-acionáveis: pedidos aguardando pagamento (nada pro admin fazer além de esperar), produtos na loja, estoque total, total de pedidos, clientes.
 
@@ -139,5 +163,8 @@ Pra um item de menu `tipo: "categoria"` fazer sentido, `/produtos` (`src/app/(si
 - Paginação real em `/admin/pedidos` (hoje é um limite fixo de 200).
 - `eventos_integracao` não tem campo de "resolvido" — contagem do dashboard é uma janela de 7 dias como proxy.
 - Migration 0012 (`conteudo_site`/`banners`, CMS de menu/home/tema/banners) ainda não foi aplicada no banco de produção — ver seção "Conteúdo do site" acima pro SQL e o que fazer antes/depois de rodar.
+- Migration 0013 (`clientes_crm`, CRM B2B) também ainda não foi aplicada no banco de produção. Diferente do CMS, aqui não existe fallback: até rodar, `/admin/clientes` mostra um erro tratado ("relation clientes_crm_resumo does not exist") em vez de lista vazia, e o item "Clientes com ação atrasada" do dashboard aparece como 0 (a consulta falha silenciosamente, `count` vem `null`, tratado como 0 — não trava o dashboard, mas também não avisa que a tabela não existe ainda).
+- Migration 0014 (`tickets`/`ticket_respostas`, módulo de suporte) também ainda não foi aplicada no banco de produção — mesmo comportamento de degradação do item acima (`/admin/tickets` mostra erro tratado, "Tickets pendentes" no dashboard aparece como 0 em vez de avisar que a tabela não existe).
+- Módulo de tickets não tem formulário público — cliente não abre ticket direto no site, só o admin cria manualmente. Se isso for implementado depois, cuidado com RLS: hoje `tickets`/`ticket_respostas` não têm NENHUMA política para `anon`, de propósito.
 - `Nav` só desenha 1 nível de dropdown de submenu — o dado (`ItemMenu.filhos`) suporta árvore de N níveis, mas netos aparecem achatados dentro do dropdown do pai, não em submenu aninhado visualmente.
 - Busca do header (`?busca=` em `/produtos`) continua sem efeito — só o filtro por `?categoria=` (novo, ver seção "Conteúdo do site") foi implementado.
