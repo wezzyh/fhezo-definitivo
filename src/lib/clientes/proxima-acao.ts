@@ -18,9 +18,9 @@ export function calcularUrgenciaProximaAcao(
   return "futura";
 }
 
-/** Classes Tailwind (paleta do projeto) pro badge de urgência num contexto de fundo neutro. */
+// Só usado em /admin/clientes — referencia os tokens --admin-* direto, sem fallback.
 export function classesUrgenciaProximaAcao(urgencia: UrgenciaProximaAcao): string {
-  if (urgencia === "atrasada") return "bg-red-100 text-red-800";
-  if (urgencia === "hoje_ou_amanha") return "bg-warning/15 text-dark-2";
-  return "bg-zinc-100 text-muted";
+  if (urgencia === "atrasada") return "bg-[var(--admin-danger)]/15 text-[var(--admin-danger)]";
+  if (urgencia === "hoje_ou_amanha") return "bg-[var(--admin-warning)]/15 text-[var(--admin-warning)]";
+  return "bg-[var(--admin-surface-hover)] text-[var(--admin-text-secondary)]";
 }

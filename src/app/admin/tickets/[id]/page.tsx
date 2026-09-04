@@ -47,14 +47,14 @@ export default async function AdminTicketDetalhePage({ params }: PaginaTicketPro
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-ink">{ticket.assunto}</h1>
-          <p className="mt-1 text-sm text-muted">
+          <h1 className="text-2xl font-semibold text-[var(--admin-text)]">{ticket.assunto}</h1>
+          <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
             Aberto em {new Date(ticket.created_at).toLocaleString("pt-BR")}
             {ticket.updated_at !== ticket.created_at &&
               ` — última atualização em ${new Date(ticket.updated_at).toLocaleString("pt-BR")}`}
           </p>
         </div>
-        <Link href="/admin/tickets" className="text-sm font-medium text-brand-green hover:underline">
+        <Link href="/admin/tickets" className="text-sm font-medium text-[var(--admin-green-text)] hover:underline">
           Voltar para a lista
         </Link>
       </div>
@@ -74,34 +74,36 @@ export default async function AdminTicketDetalhePage({ params }: PaginaTicketPro
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card className="p-6">
-            <h2 className="text-lg font-semibold text-ink">Conversa</h2>
+            <h2 className="text-lg font-semibold text-[var(--admin-text)]">Conversa</h2>
 
             <div className="mt-4 space-y-3">
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-                <div className="flex items-center justify-between text-xs text-muted">
-                  <span className="font-medium text-ink">Relato inicial</span>
+              <div className="rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-hover)] p-3">
+                <div className="flex items-center justify-between text-xs text-[var(--admin-text-secondary)]">
+                  <span className="font-medium text-[var(--admin-text)]">Relato inicial</span>
                   <span>{new Date(ticket.created_at).toLocaleString("pt-BR")}</span>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{ticket.mensagem}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--admin-text)]">{ticket.mensagem}</p>
               </div>
 
               {respostas?.map((resposta) => (
                 <div
                   key={resposta.id}
                   className={`rounded-md border p-3 ${
-                    resposta.autor === "admin" ? "border-brand-green/30 bg-brand-green/5" : "border-zinc-200 bg-white"
+                    resposta.autor === "admin"
+                      ? "border-[var(--admin-green)]/30 bg-[var(--admin-green)]/10"
+                      : "border-[var(--admin-border)] bg-[var(--admin-surface)]"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-xs text-muted">
-                    <span className="font-medium text-ink">{resposta.autor === "admin" ? "Admin" : "Cliente"}</span>
+                  <div className="flex items-center justify-between text-xs text-[var(--admin-text-secondary)]">
+                    <span className="font-medium text-[var(--admin-text)]">{resposta.autor === "admin" ? "Admin" : "Cliente"}</span>
                     <span>{new Date(resposta.created_at).toLocaleString("pt-BR")}</span>
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{resposta.mensagem}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--admin-text)]">{resposta.mensagem}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 border-t border-zinc-200 pt-4">
+            <div className="mt-6 border-t border-[var(--admin-border)] pt-4">
               <FormularioResposta ticketId={ticket.id} />
             </div>
           </Card>
@@ -109,44 +111,44 @@ export default async function AdminTicketDetalhePage({ params }: PaginaTicketPro
 
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-ink">Cliente</h2>
+            <h2 className="text-sm font-semibold text-[var(--admin-text)]">Cliente</h2>
             {ticket.cliente ? (
               <dl className="mt-3 space-y-2 text-sm">
                 <div>
-                  <dt className="text-xs text-muted">Nome</dt>
-                  <dd className="text-ink">
-                    <Link href={`/admin/clientes/${ticket.cliente.id}`} className="text-brand-green hover:underline">
+                  <dt className="text-xs text-[var(--admin-text-secondary)]">Nome</dt>
+                  <dd className="text-[var(--admin-text)]">
+                    <Link href={`/admin/clientes/${ticket.cliente.id}`} className="text-[var(--admin-green-text)] hover:underline">
                       {ticket.cliente.nome}
                     </Link>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted">E-mail</dt>
-                  <dd className="text-ink">{ticket.cliente.email}</dd>
+                  <dt className="text-xs text-[var(--admin-text-secondary)]">E-mail</dt>
+                  <dd className="text-[var(--admin-text)]">{ticket.cliente.email}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted">Telefone</dt>
-                  <dd className="text-ink">{ticket.cliente.telefone ?? "—"}</dd>
+                  <dt className="text-xs text-[var(--admin-text-secondary)]">Telefone</dt>
+                  <dd className="text-[var(--admin-text)]">{ticket.cliente.telefone ?? "—"}</dd>
                 </div>
               </dl>
             ) : (
-              <p className="mt-3 text-sm text-muted">Cliente ainda não cadastrado.</p>
+              <p className="mt-3 text-sm text-[var(--admin-text-secondary)]">Cliente ainda não cadastrado.</p>
             )}
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-ink">Pedido relacionado</h2>
+            <h2 className="text-sm font-semibold text-[var(--admin-text)]">Pedido relacionado</h2>
             {ticket.pedido ? (
-              <p className="mt-3 text-sm text-ink">
+              <p className="mt-3 text-sm text-[var(--admin-text)]">
                 #{ticket.pedido.id.replace(/-/g, "").slice(0, 8).toUpperCase()} —{" "}
                 {ticket.pedido.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 <br />
-                <span className="text-xs text-muted">
+                <span className="text-xs text-[var(--admin-text-secondary)]">
                   {new Date(ticket.pedido.created_at).toLocaleDateString("pt-BR")}
                 </span>
               </p>
             ) : (
-              <p className="mt-3 text-sm text-muted">Nenhum pedido vinculado.</p>
+              <p className="mt-3 text-sm text-[var(--admin-text-secondary)]">Nenhum pedido vinculado.</p>
             )}
           </Card>
         </div>

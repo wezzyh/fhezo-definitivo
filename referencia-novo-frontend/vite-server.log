@@ -1,0 +1,77 @@
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m370[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5173[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m14:07:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/CategoriesStrip.tsx, /src/index.css[22m
+[2m14:08:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/CategoriesStrip.tsx, /src/index.css[22m
+[2m14:09:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/CategoriesStrip.tsx, /src/index.css[22m
+[2m14:09:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/CategoriesStrip.tsx, /src/index.css[22m
+[2m14:10:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/home/CategoriesStrip.tsx[22m
+[2m14:14:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/home/CategoriesStrip.tsx[22m
+[2m14:21:16[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mtailwind.config.js[22m
+[2m14:21:31[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mtailwind.config.js[22m
+[2m14:22:45[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mtailwind.config.js[22m
+[2m14:24:45[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mtailwind.config.js[22m
+[2m14:26:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/product/BuyTogether.tsx, /src/index.css[22m
+[2m14:27:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m14:28:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m14:29:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ProductPage.tsx, /src/index.css[22m
+[2m14:29:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/product/BuyTogether.tsx, /src/index.css[22m
+[2m14:30:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/product/BuyTogether.tsx, /src/index.css[22m
+[2m14:30:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ProductPage.tsx, /src/index.css[22m
+[2m14:45:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:46:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m14:46:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:46:11[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/data/departments.ts[22m
+[2m14:46:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:50:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m14:50:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m14:50:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:53:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/navigation/DepartmentsMegaMenu.tsx, /src/index.css[22m
+[2m14:53:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/account/AccountMenu.tsx, /src/index.css[22m
+[2m14:53:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/account/AccountMenu.tsx, /src/index.css[22m
+[2m14:55:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:56:11[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:57:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:58:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m14:59:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:00:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:00:34[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:01:59[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:02:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:07:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/HomePage.tsx, /src/index.css[22m
+[2m15:08:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/HomePage.tsx, /src/index.css[22m
+[2m15:11:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/product/ProductCard.tsx, /src/index.css[22m
+[2m15:11:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/product/ProductCard.tsx, /src/index.css[22m
+[2m15:20:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:20:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:20:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:21:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:24:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:24:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:24:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:27:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:27:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/home/BenefitsStrip.tsx, /src/index.css[22m
+[2m15:30:01[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:30:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:33:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:34:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:34:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:38:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:38:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:40:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:40:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:40:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:41:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:41:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:42:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:46:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:46:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m15:46:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:46:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m15:47:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:47:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:48:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m15:48:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m
+[2m16:00:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/layout/Header.tsx, /src/index.css[22m

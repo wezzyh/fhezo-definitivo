@@ -13,11 +13,12 @@ export const TEXTO_STATUS_TICKET: Record<StatusTicket, string> = {
   fechado: "Fechado",
 };
 
+// Só usado em /admin — referencia os tokens --admin-* direto, sem fallback.
 export function classesBadgeStatusTicket(status: StatusTicket): string {
-  if (status === "resolvido") return "bg-brand-green/10 text-brand-green-dark";
-  if (status === "fechado") return "bg-zinc-200 text-muted";
-  if (status === "em_andamento") return "bg-warning/15 text-dark-2";
-  return "bg-red-100 text-red-800"; // aberto — ainda sem nenhuma ação
+  if (status === "resolvido") return "bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]";
+  if (status === "fechado") return "bg-[var(--admin-surface-hover)] text-[var(--admin-text-secondary)]";
+  if (status === "em_andamento") return "bg-[var(--admin-warning)]/15 text-[var(--admin-warning)]";
+  return "bg-[var(--admin-danger)]/15 text-[var(--admin-danger)]"; // aberto — ainda sem nenhuma ação
 }
 
 export const PRIORIDADES_TICKET: PrioridadeTicket[] = ["alta", "normal", "baixa"];
@@ -36,6 +37,6 @@ export const PESO_PRIORIDADE_TICKET: Record<PrioridadeTicket, number> = {
 };
 
 export function classesBadgePrioridadeTicket(prioridade: PrioridadeTicket): string {
-  if (prioridade === "alta") return "bg-red-100 text-red-800";
-  return "bg-zinc-100 text-muted"; // normal | baixa
+  if (prioridade === "alta") return "bg-[var(--admin-danger)]/15 text-[var(--admin-danger)]";
+  return "bg-[var(--admin-surface-hover)] text-[var(--admin-text-secondary)]"; // normal | baixa
 }

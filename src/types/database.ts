@@ -21,6 +21,8 @@ export interface Produto {
    */
   atributos: Record<string, string | number | boolean> | null;
   preco: number;
+  /** Preço "de" (riscado), opcional — só exibição de desconto na loja, não afeta cobrança. */
+  preco_de: number | null;
   estoque: number;
   ativo: boolean;
   /** Usado no cálculo de frete (Melhor Envio). */

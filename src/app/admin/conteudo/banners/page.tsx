@@ -20,15 +20,15 @@ export default async function AdminBannersPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Banners</h1>
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Banners</h1>
         <Link href="/admin/conteudo/banners/novo">
           <Button variant="primary">+ Novo banner</Button>
         </Link>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">Erro ao carregar banners: {error.message}</p>}
+      {error && <p className="mt-4 text-sm text-[var(--admin-danger)]">Erro ao carregar banners: {error.message}</p>}
       {!error && ordenados.length === 0 && (
-        <p className="mt-6 text-sm text-muted">Nenhum banner cadastrado ainda.</p>
+        <p className="mt-6 text-sm text-[var(--admin-text-secondary)]">Nenhum banner cadastrado ainda.</p>
       )}
 
       {ordenados.length > 0 && (
@@ -36,34 +36,41 @@ export default async function AdminBannersPage() {
           {ordenados.map((banner) => {
             const dados = banner.dados as unknown as DadosBanner;
             return (
-              <div key={banner.banner_id} className="flex flex-wrap items-center gap-4 rounded-md border border-zinc-200 bg-white p-3">
+              <div
+                key={banner.banner_id}
+                className="flex flex-wrap items-center gap-4 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin */}
                 <img src={dados.imagem_url} alt={dados.titulo ?? ""} className="h-16 w-28 rounded object-cover" />
                 <div className="min-w-[10rem] flex-1">
-                  <p className="font-medium text-ink">{dados.titulo || "(sem título)"}</p>
-                  <p className="text-xs text-muted">Ordem {dados.ordem} · versão {banner.versao}</p>
+                  <p className="font-medium text-[var(--admin-text)]">{dados.titulo || "(sem título)"}</p>
+                  <p className="text-xs text-[var(--admin-text-secondary)]">
+                    Ordem {dados.ordem} · versão {banner.versao}
+                  </p>
                   {(dados.data_inicio || dados.data_fim) && (
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-[var(--admin-text-secondary)]">
                       Vigência: {dados.data_inicio ?? "sempre"} até {dados.data_fim ?? "sempre"}
                     </p>
                   )}
                 </div>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    dados.ativo ? "bg-brand-green/10 text-brand-green-dark" : "bg-zinc-200 text-muted"
+                    dados.ativo
+                      ? "bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                      : "bg-[var(--admin-surface-hover)] text-[var(--admin-text-secondary)]"
                   }`}
                 >
                   {dados.ativo ? "Ativo" : "Inativo"}
                 </span>
                 <Link
                   href={`/admin/conteudo/banners/${banner.banner_id}/editar`}
-                  className="text-sm font-medium text-brand-green hover:underline"
+                  className="text-sm font-medium text-[var(--admin-green-text)] hover:underline"
                 >
                   Editar
                 </Link>
                 <Link
                   href={`/admin/conteudo/banners/${banner.banner_id}/historico`}
-                  className="text-sm font-medium text-ink hover:underline"
+                  className="text-sm font-medium text-[var(--admin-text)] hover:underline"
                 >
                   Histórico
                 </Link>

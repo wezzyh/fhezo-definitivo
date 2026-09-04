@@ -56,12 +56,12 @@ export function EditorMenu({ itensIniciais, categorias }: EditorMenuProps) {
         + Item de topo
       </Button>
 
-      <div className="flex items-center gap-4 border-t border-zinc-200 pt-4">
+      <div className="flex items-center gap-4 border-t border-[var(--admin-border)] pt-4">
         <Button type="button" variant="primary" onClick={publicar} disabled={pendente}>
           {pendente ? "Publicando..." : "Publicar"}
         </Button>
-        {mensagem && <p className="text-sm text-brand-green-dark">{mensagem}</p>}
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
+        {mensagem && <p className="text-sm text-[var(--admin-green-text)]">{mensagem}</p>}
+        {erro && <p className="text-sm text-[var(--admin-danger)]">{erro}</p>}
       </div>
     </div>
   );
@@ -85,7 +85,7 @@ function ArvoreItens({ itens, caminho, categorias, onRemover, onMover, onAtualiz
         return (
           <li
             key={item.id}
-            className="rounded-md border border-zinc-200 bg-white p-3"
+            className="rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3"
             style={{ marginLeft: caminho.length * 24 }}
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -142,7 +142,7 @@ function ArvoreItens({ itens, caminho, categorias, onRemover, onMover, onAtualiz
                   type="button"
                   onClick={() => onMover(caminhoItem, -1)}
                   disabled={indice === 0}
-                  className="px-2 text-sm text-muted hover:text-ink disabled:opacity-30"
+                  className="px-2 text-sm text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
                 >
                   ▲
                 </button>
@@ -150,21 +150,21 @@ function ArvoreItens({ itens, caminho, categorias, onRemover, onMover, onAtualiz
                   type="button"
                   onClick={() => onMover(caminhoItem, 1)}
                   disabled={indice === itens.length - 1}
-                  className="px-2 text-sm text-muted hover:text-ink disabled:opacity-30"
+                  className="px-2 text-sm text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
                 >
                   ▼
                 </button>
                 <button
                   type="button"
                   onClick={() => onAdicionarFilho(caminhoItem)}
-                  className="px-2 text-sm font-medium text-brand-green hover:underline"
+                  className="px-2 text-sm font-medium text-[var(--admin-green-text)] hover:underline"
                 >
                   + submenu
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemover(caminhoItem)}
-                  className="px-2 text-sm font-medium text-red-600 hover:underline"
+                  className="px-2 text-sm font-medium text-[var(--admin-danger)] hover:underline"
                 >
                   Remover
                 </button>

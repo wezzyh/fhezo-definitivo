@@ -13,10 +13,12 @@ export const TEXTO_STATUS_PEDIDO: Record<StatusPedido, string> = {
   cancelado: "Cancelado",
 };
 
-/** Classes Tailwind (paleta do projeto) pro badge de status num contexto de fundo neutro. */
+// Só usado em /admin (a página de confirmação do cliente usa só
+// TEXTO_STATUS_PEDIDO, nunca esta função) — referencia os tokens
+// --admin-* direto, sem fallback.
 export function classesBadgeStatusPedido(status: StatusPedido): string {
-  if (status === "entregue" || status === "pago") return "bg-brand-green/10 text-brand-green-dark";
-  if (status === "cancelado") return "bg-red-100 text-red-800";
-  if (status === "em_separacao" || status === "enviado") return "bg-warning/15 text-dark-2";
-  return "bg-zinc-200 text-muted"; // pendente
+  if (status === "entregue" || status === "pago") return "bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]";
+  if (status === "cancelado") return "bg-[var(--admin-danger)]/15 text-[var(--admin-danger)]";
+  if (status === "em_separacao" || status === "enviado") return "bg-[var(--admin-warning)]/15 text-[var(--admin-warning)]";
+  return "bg-[var(--admin-surface-hover)] text-[var(--admin-text-secondary)]"; // pendente
 }

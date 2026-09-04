@@ -46,27 +46,27 @@ export function EditorTema({ coresIniciais }: { coresIniciais: DadosTema["cores"
             type="color"
             value={cores[campo.chave]}
             onChange={(e) => setCores((atual) => ({ ...atual, [campo.chave]: e.target.value }))}
-            className="h-10 w-14 shrink-0 rounded border border-zinc-300"
+            className="h-10 w-14 shrink-0 rounded border border-[var(--admin-border-strong)]"
           />
           <div className="flex-1">
-            <p className="text-sm font-medium text-ink">{campo.rotulo}</p>
-            <p className="text-xs text-muted">{campo.descricao}</p>
+            <p className="text-sm font-medium text-[var(--admin-text)]">{campo.rotulo}</p>
+            <p className="text-xs text-[var(--admin-text-secondary)]">{campo.descricao}</p>
           </div>
           <input
             type="text"
             value={cores[campo.chave]}
             onChange={(e) => setCores((atual) => ({ ...atual, [campo.chave]: e.target.value }))}
-            className="w-28 rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            className="w-28 rounded-md border border-[var(--admin-border-strong)] bg-[var(--admin-bg)] px-2 py-1 text-sm text-[var(--admin-text)]"
           />
         </div>
       ))}
 
-      <div className="flex items-center gap-4 border-t border-zinc-200 pt-4">
+      <div className="flex items-center gap-4 border-t border-[var(--admin-border)] pt-4">
         <Button type="button" variant="primary" onClick={publicar} disabled={pendente}>
           {pendente ? "Publicando..." : "Publicar"}
         </Button>
-        {mensagem && <p className="text-sm text-brand-green-dark">{mensagem}</p>}
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
+        {mensagem && <p className="text-sm text-[var(--admin-green-text)]">{mensagem}</p>}
+        {erro && <p className="text-sm text-[var(--admin-danger)]">{erro}</p>}
       </div>
     </div>
   );

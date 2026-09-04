@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormularioExcluirProduto } from "./botao-excluir";
 import { classesBadgeQualidade } from "@/lib/produtos/qualidade";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao } from "@/lib/categorias/hierarquia";
@@ -47,6 +48,9 @@ export function TabelaProdutos({
   const [carregandoSelecaoTotal, setCarregandoSelecaoTotal] = useState(false);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState<MensagemFeedback>(null);
+  const [confirmacaoPendente, setConfirmacaoPendente] = useState<{ titulo: string; descricao: string; acao: () => void } | null>(
+    null,
+  );
 
   const [marcaEscolhida, setMarcaEscolhida] = useState("");
   const [categoriaEscolhida, setCategoriaEscolhida] = useState("");
@@ -103,11 +107,9 @@ export function TabelaProdutos({
   }
 
   async function executar<T extends { sucesso: boolean; mensagem?: string; afetados: number }>(
-    confirmacao: string,
     acao: () => Promise<T>,
     montarSucesso: (resultado: T) => string,
   ) {
-    if (!window.confirm(confirmacao)) return;
     setProcessando(true);
     setMensagem(null);
     const resultado = await acao();
@@ -121,12 +123,17 @@ export function TabelaProdutos({
     setSelecionados(new Set());
   }
 
+  function solicitarConfirmacao(titulo: string, descricao: string, acao: () => void) {
+    setConfirmacaoPendente({ titulo, descricao, acao });
+  }
+
   function lidarComAtivar(ativo: boolean) {
-    const acaoTexto = ativo ? "ativar" : "desativar";
-    executar(
-      `Tem certeza que deseja ${acaoTexto} ${selecionados.size} produto(s)?`,
-      () => alternarAtivoEmMassa([...selecionados], ativo),
-      (r) => `${r.afetados} produto(s) ${ativo ? "ativado(s)" : "desativado(s)"}.`,
+    const acaoTexto = ativo ? "Ativar" : "Desativar";
+    solicitarConfirmacao(`${acaoTexto} produtos`, `Tem certeza que deseja ${acaoTexto.toLowerCase()} ${selecionados.size} produto(s)?`, () =>
+      executar(
+        () => alternarAtivoEmMassa([...selecionados], ativo),
+        (r) => `${r.afetados} produto(s) ${ativo ? "ativado(s)" : "desativado(s)"}.`,
+      ),
     );
   }
 
@@ -136,10 +143,14 @@ export function TabelaProdutos({
       return;
     }
     const nomeMarca = marcasOrdenadas.find((m) => m.id === marcaEscolhida)?.nome ?? "";
-    executar(
+    solicitarConfirmacao(
+      "Atribuir marca",
       `Tem certeza que deseja atribuir a marca "${nomeMarca}" a ${selecionados.size} produto(s)?`,
-      () => atribuirMarcaEmMassa([...selecionados], marcaEscolhida),
-      (r) => `Marca "${nomeMarca}" atribuída a ${r.afetados} produto(s).`,
+      () =>
+        executar(
+          () => atribuirMarcaEmMassa([...selecionados], marcaEscolhida),
+          (r) => `Marca "${nomeMarca}" atribuída a ${r.afetados} produto(s).`,
+        ),
     );
   }
 
@@ -149,10 +160,14 @@ export function TabelaProdutos({
       return;
     }
     const nomeCategoria = categoriasOrdenadas.find((c) => c.id === categoriaEscolhida)?.nome ?? "";
-    executar(
+    solicitarConfirmacao(
+      "Atribuir categoria",
       `Tem certeza que deseja atribuir a categoria "${nomeCategoria}" a ${selecionados.size} produto(s)?`,
-      () => atribuirCategoriaEmMassa([...selecionados], categoriaEscolhida),
-      (r) => `Categoria "${nomeCategoria}" atribuída a ${r.afetados} produto(s).`,
+      () =>
+        executar(
+          () => atribuirCategoriaEmMassa([...selecionados], categoriaEscolhida),
+          (r) => `Categoria "${nomeCategoria}" atribuída a ${r.afetados} produto(s).`,
+        ),
     );
   }
 
@@ -168,15 +183,24 @@ export function TabelaProdutos({
         ? `definir o estoque de ${selecionados.size} produto(s) para ${valor}`
         : `${valor >= 0 ? "somar" : "subtrair"} ${Math.abs(valor)} unidade(s) ao estoque de ${selecionados.size} produto(s)`;
 
-    executar(
+    solicitarConfirmacao(
+      "Ajustar estoque",
       `Tem certeza que deseja ${descricaoAcao}? Produtos que ficariam com estoque negativo serão pulados.`,
-      () => ajustarEstoqueEmMassa([...selecionados], modoEstoque, valor),
-      (r) =>
-        `Estoque ajustado em ${r.afetados} produto(s).` +
-        (r.ignoradosPorEstoqueNegativo > 0
-          ? ` ${r.ignoradosPorEstoqueNegativo} pulado(s) por resultar em estoque negativo.`
-          : ""),
+      () =>
+        executar(
+          () => ajustarEstoqueEmMassa([...selecionados], modoEstoque, valor),
+          (r) =>
+            `Estoque ajustado em ${r.afetados} produto(s).` +
+            (r.ignoradosPorEstoqueNegativo > 0
+              ? ` ${r.ignoradosPorEstoqueNegativo} pulado(s) por resultar em estoque negativo.`
+              : ""),
+        ),
     );
+  }
+
+  function confirmarAcaoPendente() {
+    confirmacaoPendente?.acao();
+    setConfirmacaoPendente(null);
   }
 
   return (
@@ -185,7 +209,7 @@ export function TabelaProdutos({
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-zinc-300"
+            className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
             checked={todosDaPaginaSelecionados}
             onChange={alternarSelecaoPagina}
           />
@@ -196,7 +220,7 @@ export function TabelaProdutos({
             type="button"
             onClick={selecionarTodosOsResultados}
             disabled={carregandoSelecaoTotal}
-            className="font-medium text-brand-green hover:underline disabled:opacity-50"
+            className="font-medium text-[var(--admin-green-text)] hover:underline disabled:opacity-50"
           >
             {carregandoSelecaoTotal
               ? "Carregando..."
@@ -204,15 +228,15 @@ export function TabelaProdutos({
           </button>
         )}
         {selecionados.size > 0 && (
-          <button type="button" onClick={limparSelecao} className="text-muted underline hover:text-ink">
+          <button type="button" onClick={limparSelecao} className="text-[var(--admin-text-secondary)] underline hover:text-[var(--admin-text)]">
             Limpar seleção ({selecionados.size})
           </button>
         )}
       </div>
 
       {selecionados.size > 0 && (
-        <div className="mt-3 space-y-3 rounded-md border border-brand-green/30 bg-brand-green/5 p-4">
-          <p className="text-sm font-medium text-ink">
+        <div className="mt-3 space-y-3 rounded-md border border-[var(--admin-green)]/30 bg-[var(--admin-green)]/10 p-4">
+          <p className="text-sm font-medium text-[var(--admin-text)]">
             {selecionados.size} produto(s) selecionado(s) — ações em massa:
           </p>
 
@@ -286,14 +310,26 @@ export function TabelaProdutos({
       )}
 
       {mensagem && (
-        <p className={`mt-3 text-sm ${mensagem.tipo === "sucesso" ? "text-brand-green-dark" : "text-red-600"}`}>
+        <p
+          className={`mt-3 text-sm ${mensagem.tipo === "sucesso" ? "text-[var(--admin-green-text)]" : "text-[var(--admin-danger)]"}`}
+        >
           {mensagem.texto}
         </p>
       )}
 
-      <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200 bg-white">
+      <ConfirmDialog
+        aberto={confirmacaoPendente !== null}
+        titulo={confirmacaoPendente?.titulo ?? ""}
+        descricao={confirmacaoPendente?.descricao}
+        textoConfirmar="Confirmar"
+        destrutivo={false}
+        onConfirmar={confirmarAcaoPendente}
+        onCancelar={() => setConfirmacaoPendente(null)}
+      />
+
+      <div className="mt-4 overflow-x-auto rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)]">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-muted">
+          <thead className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] text-xs uppercase text-[var(--admin-text-secondary)]">
             <tr>
               <th className="w-8 px-4 py-3" />
               <th className="px-4 py-3 font-medium">SKU</th>
@@ -311,23 +347,26 @@ export function TabelaProdutos({
             {produtos.map((produto) => {
               const precisaRevisao = produto.bling_produto_id !== null && !produto.ativo;
               return (
-                <tr key={produto.id} className="border-b border-zinc-100 last:border-0">
+                <tr
+                  key={produto.id}
+                  className="border-b border-[var(--admin-border)] transition-colors duration-150 last:border-0 hover:bg-[var(--admin-surface-hover)]"
+                >
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-zinc-300"
+                      className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
                       checked={selecionados.has(produto.id)}
                       onChange={() => alternarSelecaoLinha(produto.id)}
                     />
                   </td>
-                  <td className="px-4 py-3 font-medium text-muted">{produto.sku}</td>
-                  <td className="px-4 py-3 font-medium text-ink">{produto.nome}</td>
-                  <td className="px-4 py-3 text-muted">{produto.marca?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted">{produto.categoria?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 font-medium text-ink">
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text-secondary)]">{produto.sku}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text)]">{produto.nome}</td>
+                  <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{produto.marca?.nome ?? "—"}</td>
+                  <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{produto.categoria?.nome ?? "—"}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text)]">
                     {produto.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </td>
-                  <td className={`px-4 py-3 font-medium ${produto.estoque < 0 ? "text-red-700" : "text-ink"}`}>
+                  <td className={`px-4 py-3 font-medium ${produto.estoque < 0 ? "text-[var(--admin-danger)]" : "text-[var(--admin-text)]"}`}>
                     {produto.estoque}
                   </td>
                   <td className="px-4 py-3">
@@ -341,13 +380,15 @@ export function TabelaProdutos({
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          produto.ativo ? "bg-brand-green/10 text-brand-green-dark" : "bg-zinc-200 text-muted"
+                          produto.ativo
+                            ? "bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                            : "bg-[var(--admin-surface-hover)] text-[var(--admin-text-secondary)]"
                         }`}
                       >
                         {produto.ativo ? "Ativo" : "Inativo"}
                       </span>
                       {precisaRevisao && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        <span className="rounded-full bg-[var(--admin-warning)]/15 px-2 py-0.5 text-xs font-medium text-[var(--admin-warning)]">
                           Do Bling — revisar
                         </span>
                       )}
@@ -357,7 +398,7 @@ export function TabelaProdutos({
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/admin/produtos/${produto.id}/editar`}
-                        className="font-medium text-brand-green hover:underline"
+                        className="font-medium text-[var(--admin-green-text)] hover:underline"
                       >
                         Editar
                       </Link>

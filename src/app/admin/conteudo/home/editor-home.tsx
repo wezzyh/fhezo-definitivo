@@ -99,11 +99,11 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
   return (
     <div className="space-y-4">
       {secoes.map((secao, indice) => (
-        <div key={secao.id} className="rounded-md border border-zinc-200 bg-white p-4">
+        <div key={secao.id} className="rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">{ROTULOS_TIPO[secao.tipo]}</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-[var(--admin-text-secondary)]">{ROTULOS_TIPO[secao.tipo]}</span>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-xs text-muted">
+              <label className="flex items-center gap-1 text-xs text-[var(--admin-text-secondary)]">
                 <input
                   type="checkbox"
                   checked={secao.ativo}
@@ -115,7 +115,7 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
                 type="button"
                 onClick={() => mover(secao.id, -1)}
                 disabled={indice === 0}
-                className="px-1 text-muted hover:text-ink disabled:opacity-30"
+                className="px-1 text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
               >
                 ▲
               </button>
@@ -123,14 +123,14 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
                 type="button"
                 onClick={() => mover(secao.id, 1)}
                 disabled={indice === secoes.length - 1}
-                className="px-1 text-muted hover:text-ink disabled:opacity-30"
+                className="px-1 text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
               >
                 ▼
               </button>
               <button
                 type="button"
                 onClick={() => remover(secao.id)}
-                className="text-xs font-medium text-red-600 hover:underline"
+                className="text-xs font-medium text-[var(--admin-danger)] hover:underline"
               >
                 Remover
               </button>
@@ -191,7 +191,7 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
                     </option>
                   ))}
                 </Select>
-                <p className="text-xs text-muted">Segure Ctrl (ou Cmd) para selecionar mais de uma categoria.</p>
+                <p className="text-xs text-[var(--admin-text-secondary)]">Segure Ctrl (ou Cmd) para selecionar mais de uma categoria.</p>
               </>
             )}
 
@@ -255,7 +255,7 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
                         </option>
                       ))}
                     </Select>
-                    <p className="text-xs text-muted">Segure Ctrl (ou Cmd) para selecionar mais de um produto.</p>
+                    <p className="text-xs text-[var(--admin-text-secondary)]">Segure Ctrl (ou Cmd) para selecionar mais de um produto.</p>
                   </>
                 )}
               </>
@@ -276,12 +276,12 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
         </Button>
       </div>
 
-      <div className="flex items-center gap-4 border-t border-zinc-200 pt-4">
+      <div className="flex items-center gap-4 border-t border-[var(--admin-border)] pt-4">
         <Button type="button" variant="primary" onClick={publicar} disabled={pendente}>
           {pendente ? "Publicando..." : "Publicar"}
         </Button>
-        {mensagem && <p className="text-sm text-brand-green-dark">{mensagem}</p>}
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
+        {mensagem && <p className="text-sm text-[var(--admin-green-text)]">{mensagem}</p>}
+        {erro && <p className="text-sm text-[var(--admin-danger)]">{erro}</p>}
       </div>
     </div>
   );

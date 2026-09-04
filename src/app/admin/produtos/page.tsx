@@ -100,7 +100,7 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Produtos</h1>
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Produtos</h1>
         <div className="flex gap-2">
           <Link href="/admin/produtos/importar">
             <Button variant="outline">Importar CSV/XLSX</Button>
@@ -112,14 +112,14 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
       </div>
 
       {contagemPendentesRevisao !== null && contagemPendentesRevisao > 0 && (
-        <div className="mt-4 flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
-          <p className="text-sm text-amber-900">
-            <strong>{contagemPendentesRevisao}</strong> produto(s) importado(s) do Bling aguardando
-            revisão (categoria, preço, peso/dimensões, fotos) antes de ativar.
+        <div className="mt-4 flex items-center justify-between rounded-md border border-[var(--admin-warning)]/30 bg-[var(--admin-warning)]/10 px-4 py-3">
+          <p className="text-sm text-[var(--admin-text)]">
+            <strong className="text-[var(--admin-warning)]">{contagemPendentesRevisao}</strong> produto(s)
+            importado(s) do Bling aguardando revisão (categoria, preço, peso/dimensões, fotos) antes de ativar.
           </p>
           <Link
             href={construirHref({ problemas: problemasAtivos, revisaoAtiva: !somenteRevisao })}
-            className="shrink-0 text-sm font-medium text-amber-900 underline hover:no-underline"
+            className="shrink-0 text-sm font-medium text-[var(--admin-warning)] underline hover:no-underline"
           >
             {somenteRevisao ? "Ver todos os produtos" : "Ver só os pendentes de revisão"}
           </Link>
@@ -145,10 +145,10 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
                   : [...problemasAtivos, problema.id],
                 revisaoAtiva: somenteRevisao,
               })}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
                 ativo
-                  ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-                  : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+                  ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                  : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-text)]"
               }`}
             >
               {problema.rotulo}
@@ -159,17 +159,17 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
         {problemasAtivos.length > 0 && (
           <Link
             href={construirHref({ problemas: [], revisaoAtiva: somenteRevisao })}
-            className="rounded-full px-3 py-1 text-xs font-medium text-muted underline hover:text-ink"
+            className="rounded-full px-3 py-1 text-xs font-medium text-[var(--admin-text-secondary)] underline hover:text-[var(--admin-text)]"
           >
             Limpar filtros
           </Link>
         )}
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">Erro ao carregar produtos: {error.message}</p>}
+      {error && <p className="mt-4 text-sm text-[var(--admin-danger)]">Erro ao carregar produtos: {error.message}</p>}
 
       {!error && produtos.length === 0 && (
-        <p className="mt-6 text-sm text-muted">
+        <p className="mt-6 text-sm text-[var(--admin-text-secondary)]">
           {problemasAtivos.length > 0 || somenteRevisao
             ? "Nenhum produto encontrado com esses filtros."
             : "Nenhum produto cadastrado ainda."}
@@ -188,7 +188,7 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
       )}
 
       {produtos.length > 0 && totalPaginas > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-muted">
+        <div className="mt-4 flex items-center justify-between text-sm text-[var(--admin-text-secondary)]">
           <span>
             Página {paginaAtual} de {totalPaginas} ({totalFiltrado} produto(s))
           </span>
@@ -196,7 +196,7 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
             {paginaAtual > 1 && (
               <Link
                 href={construirHref({ problemas: problemasAtivos, revisaoAtiva: somenteRevisao, pagina: paginaAtual - 1 })}
-                className="font-medium text-brand-green hover:underline"
+                className="font-medium text-[var(--admin-green-text)] hover:underline"
               >
                 ← Anterior
               </Link>
@@ -204,7 +204,7 @@ export default async function AdminProdutosPage({ searchParams }: AdminProdutosP
             {paginaAtual < totalPaginas && (
               <Link
                 href={construirHref({ problemas: problemasAtivos, revisaoAtiva: somenteRevisao, pagina: paginaAtual + 1 })}
-                className="font-medium text-brand-green hover:underline"
+                className="font-medium text-[var(--admin-green-text)] hover:underline"
               >
                 Próxima →
               </Link>

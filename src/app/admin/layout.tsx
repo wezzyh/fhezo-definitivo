@@ -1,14 +1,12 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
-import { sairAdmin } from "./actions";
+import { AdminShell } from "@/components/admin/admin-shell";
 
 // Layout compartilhado por todas as páginas dentro de /admin.
 // O proxy (src/proxy.ts) já garante que só se chega até aqui autenticado,
 // exceto na própria página de login — por isso, quando não há usuário
-// logado, apenas renderizamos o conteúdo (a tela de login) sem o cabeçalho
-// do painel.
+// logado, apenas renderizamos o conteúdo (a tela de login) sem a casca
+// do painel (sidebar/header, ver AdminShell).
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const supabase = await criarClienteSupabaseServidor();
   const {
@@ -19,58 +17,5 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     return <>{children}</>;
   }
 
-  return (
-    <div className="min-h-screen bg-page">
-      <header className="border-b border-zinc-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="text-lg font-semibold text-ink">Painel Administrativo — FHEZO</span>
-            <nav className="flex gap-4 text-sm font-medium text-muted">
-              <Link href="/admin" className="hover:text-brand-green">
-                Dashboard
-              </Link>
-              <Link href="/admin/pedidos" className="hover:text-brand-green">
-                Pedidos
-              </Link>
-              <Link href="/admin/clientes" className="hover:text-brand-green">
-                Clientes
-              </Link>
-              <Link href="/admin/tickets" className="hover:text-brand-green">
-                Tickets
-              </Link>
-              <Link href="/admin/produtos" className="hover:text-brand-green">
-                Produtos
-              </Link>
-              <Link href="/admin/marcas" className="hover:text-brand-green">
-                Marcas
-              </Link>
-              <Link href="/admin/categorias" className="hover:text-brand-green">
-                Categorias
-              </Link>
-              <span className="text-zinc-300">|</span>
-              <Link href="/admin/conteudo/banners" className="hover:text-brand-green">
-                Banners
-              </Link>
-              <Link href="/admin/conteudo/menu" className="hover:text-brand-green">
-                Menu
-              </Link>
-              <Link href="/admin/conteudo/home" className="hover:text-brand-green">
-                Home
-              </Link>
-              <Link href="/admin/conteudo/tema" className="hover:text-brand-green">
-                Tema
-              </Link>
-            </nav>
-          </div>
-          <form action={sairAdmin}>
-            <Button type="submit" variant="outline">
-              Sair
-            </Button>
-          </form>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
-    </div>
-  );
+  return <AdminShell userEmail={user.email ?? null}>{children}</AdminShell>;
 }

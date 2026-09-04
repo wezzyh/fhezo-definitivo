@@ -25,8 +25,8 @@ export default async function HistoricoBannerPage({ params }: HistoricoBannerPag
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Histórico do banner</h1>
-        <Link href="/admin/conteudo/banners" className="text-sm font-medium text-brand-green hover:underline">
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Histórico do banner</h1>
+        <Link href="/admin/conteudo/banners" className="text-sm font-medium text-[var(--admin-green-text)] hover:underline">
           Voltar para a lista
         </Link>
       </div>

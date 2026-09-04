@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import { PRIORIDADES_TICKET, TEXTO_PRIORIDADE_TICKET } from "@/lib/tickets/status";
 import { criarTicket, type EstadoFormularioTicket } from "./actions";
 import type { Cliente, Pedido } from "@/types/database";
@@ -18,18 +19,19 @@ const estadoInicial: EstadoFormularioTicket = {};
 
 export function FormularioTicket({ clientes, pedidos }: FormularioTicketProps) {
   const [estado, formAction, pendente] = useActionState(criarTicket, estadoInicial);
+  const fecharModal = useFecharModalDeRota();
 
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="assunto" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="assunto" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Assunto *
         </label>
         <Input id="assunto" name="assunto" required placeholder="Ex.: Produto veio com defeito" />
       </div>
 
       <div>
-        <label htmlFor="mensagem" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="mensagem" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Mensagem *
         </label>
         <Textarea
@@ -43,7 +45,7 @@ export function FormularioTicket({ clientes, pedidos }: FormularioTicketProps) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="cliente_id" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="cliente_id" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Cliente
           </label>
           <Select id="cliente_id" name="cliente_id" defaultValue="">
@@ -57,7 +59,7 @@ export function FormularioTicket({ clientes, pedidos }: FormularioTicketProps) {
         </div>
 
         <div>
-          <label htmlFor="prioridade" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="prioridade" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Prioridade
           </label>
           <Select id="prioridade" name="prioridade" defaultValue="normal">
@@ -71,7 +73,7 @@ export function FormularioTicket({ clientes, pedidos }: FormularioTicketProps) {
       </div>
 
       <div>
-        <label htmlFor="pedido_id" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="pedido_id" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Pedido relacionado
         </label>
         <Select id="pedido_id" name="pedido_id" defaultValue="">
@@ -86,11 +88,18 @@ export function FormularioTicket({ clientes, pedidos }: FormularioTicketProps) {
         </Select>
       </div>
 
-      {estado.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
+      {estado.erro && <p className="text-sm text-[var(--admin-danger)]">{estado.erro}</p>}
 
-      <Button type="submit" variant="primary" disabled={pendente}>
-        {pendente ? "Criando..." : "Criar ticket"}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button type="submit" variant="primary" disabled={pendente}>
+          {pendente ? "Criando..." : "Criar ticket"}
+        </Button>
+        {fecharModal && (
+          <Button type="button" variant="ghost" onClick={fecharModal} disabled={pendente}>
+            Cancelar
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

@@ -35,7 +35,7 @@ export function FormularioResposta({ ticketId }: FormularioRespostaProps) {
   return (
     <div className="space-y-3">
       <div className="w-40">
-        <label htmlFor="autor" className="mb-1 block text-xs font-medium text-muted">
+        <label htmlFor="autor" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
           Quem está falando
         </label>
         <Select
@@ -55,7 +55,7 @@ export function FormularioResposta({ ticketId }: FormularioRespostaProps) {
         onChange={(e) => setMensagem(e.target.value)}
       />
 
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {erro && <p className="text-sm text-[var(--admin-danger)]">{erro}</p>}
 
       <Button type="button" variant="primary" disabled={enviando || !mensagem.trim()} onClick={enviar}>
         {enviando ? "Enviando..." : "Adicionar à conversa"}

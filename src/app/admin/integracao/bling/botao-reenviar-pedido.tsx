@@ -26,7 +26,7 @@ export function BotaoReenviarPedidoBling({ pedidoId }: { pedidoId: string }) {
       <Button type="button" variant="outline" disabled={enviando} onClick={lidarComClique}>
         {enviando ? "Enviando..." : "Tentar novamente"}
       </Button>
-      {erro && <p className="mt-1 max-w-xs text-xs text-red-600">{erro}</p>}
+      {erro && <p className="mt-1 max-w-xs text-xs text-[var(--admin-danger)]">{erro}</p>}
     </div>
   );
 }

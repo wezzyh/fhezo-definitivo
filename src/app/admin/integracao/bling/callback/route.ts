@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const redirecionarParaAdmin = (mensagem: string, sucesso: boolean) => {
     const destino = request.nextUrl.clone();
-    destino.pathname = "/admin";
+    destino.pathname = "/admin/integracao";
     destino.search = "";
     destino.searchParams.set("integracaoBling", sucesso ? "sucesso" : "erro");
     destino.searchParams.set("mensagem", mensagem);

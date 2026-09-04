@@ -52,7 +52,7 @@ export function FormularioStatusEnvio({ pedidoId, statusAtual }: FormularioStatu
       <Button type="button" variant="outline" disabled={salvando} onClick={salvar}>
         {salvando ? "Salvando..." : "Salvar"}
       </Button>
-      {erro && <p className="text-xs text-red-600">{erro}</p>}
+      {erro && <p className="text-xs text-[var(--admin-danger)]">{erro}</p>}
     </div>
   );
 }

@@ -30,14 +30,14 @@ export function FormularioCrm({ crm, action }: FormularioCrmProps) {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="nome_comprador" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="nome_comprador" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Comprador (contato principal)
         </label>
         <Input id="nome_comprador" name="nome_comprador" defaultValue={crm?.nome_comprador ?? ""} />
       </div>
 
       <div>
-        <label htmlFor="segmento" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="segmento" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Segmento
         </label>
         <Select id="segmento" name="segmento" defaultValue={segmentoAtual}>
@@ -51,7 +51,7 @@ export function FormularioCrm({ crm, action }: FormularioCrmProps) {
       </div>
 
       <div>
-        <label htmlFor="valor_potencial" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="valor_potencial" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Valor potencial (R$)
         </label>
         <Input
@@ -66,7 +66,7 @@ export function FormularioCrm({ crm, action }: FormularioCrmProps) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="proxima_acao" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="proxima_acao" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Próxima ação
           </label>
           <Input
@@ -77,7 +77,7 @@ export function FormularioCrm({ crm, action }: FormularioCrmProps) {
           />
         </div>
         <div>
-          <label htmlFor="proxima_acao_data" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="proxima_acao_data" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Data da próxima ação
           </label>
           <Input
@@ -90,14 +90,14 @@ export function FormularioCrm({ crm, action }: FormularioCrmProps) {
       </div>
 
       <div>
-        <label htmlFor="observacoes" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="observacoes" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Observações
         </label>
         <Textarea id="observacoes" name="observacoes" rows={4} defaultValue={crm?.observacoes ?? ""} />
       </div>
 
-      {estado.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
-      {estado.sucesso && <p className="text-sm text-brand-green-dark">Dados salvos com sucesso.</p>}
+      {estado.erro && <p className="text-sm text-[var(--admin-danger)]">{estado.erro}</p>}
+      {estado.sucesso && <p className="text-sm text-[var(--admin-green-text)]">Dados salvos com sucesso.</p>}
 
       <Button type="submit" variant="primary" disabled={pendente}>
         {pendente ? "Salvando..." : "Salvar dados de CRM"}

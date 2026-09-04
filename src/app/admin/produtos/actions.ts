@@ -31,6 +31,7 @@ interface DadosProdutoValidados {
   categoria_id: string;
   descricao: string | null;
   preco: number;
+  preco_de: number | null;
   estoque: number;
   ativo: boolean;
   peso_kg: number;
@@ -90,6 +91,15 @@ function validarDadosProduto(formData: FormData): DadosProdutoValidados | { erro
     return { erro: "O estoque deve ser um número inteiro maior ou igual a zero." };
   }
 
+  const precoDeTexto = String(formData.get("preco_de") ?? "").trim();
+  let precoDe: number | null = null;
+  if (precoDeTexto) {
+    precoDe = Number(precoDeTexto.replace(",", "."));
+    if (Number.isNaN(precoDe) || precoDe < 0) {
+      return { erro: "O preço \"de\" deve ser um número maior ou igual a zero." };
+    }
+  }
+
   const pesoKg = validarNumeroPositivo(formData, "peso_kg", "Peso");
   if (typeof pesoKg !== "number") return pesoKg;
 
@@ -109,6 +119,7 @@ function validarDadosProduto(formData: FormData): DadosProdutoValidados | { erro
     categoria_id: categoriaId,
     descricao: descricao || null,
     preco,
+    preco_de: precoDe,
     estoque,
     ativo,
     peso_kg: pesoKg,
@@ -147,6 +158,7 @@ export async function criarProduto(
     categoria_id: dados.categoria_id,
     descricao: dados.descricao,
     preco: dados.preco,
+    preco_de: dados.preco_de,
     estoque: dados.estoque,
     ativo: dados.ativo,
     peso_kg: dados.peso_kg,

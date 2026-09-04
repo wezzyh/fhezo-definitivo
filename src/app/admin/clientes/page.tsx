@@ -90,12 +90,12 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Clientes (CRM)</h1>
-        <Link href="/admin" className="text-sm font-medium text-brand-green hover:underline">
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Clientes (CRM)</h1>
+        <Link href="/admin" className="text-sm font-medium text-[var(--admin-green-text)] hover:underline">
           Voltar ao dashboard
         </Link>
       </div>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
         Empresas cadastradas (PJ), com contato principal, segmento, valor potencial e próxima ação
         de venda.
       </p>
@@ -103,7 +103,7 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
       <Card className="mt-4 p-4">
         <form method="get" className="flex flex-wrap items-end gap-4">
           <div className="w-48">
-            <label htmlFor="segmento" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="segmento" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Segmento
             </label>
             <Select id="segmento" name="segmento" defaultValue={segmentoFiltro ?? ""}>
@@ -123,9 +123,9 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
               type="checkbox"
               value="1"
               defaultChecked={semProximaAcao}
-              className="h-4 w-4 rounded border-zinc-300"
+              className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
             />
-            <label htmlFor="semProximaAcao" className="text-sm text-ink">
+            <label htmlFor="semProximaAcao" className="text-sm text-[var(--admin-text)]">
               Sem próxima ação definida
             </label>
           </div>
@@ -137,9 +137,9 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
               type="checkbox"
               value="1"
               defaultChecked={somenteAtrasadas}
-              className="h-4 w-4 rounded border-zinc-300"
+              className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
             />
-            <label htmlFor="atrasada" className="text-sm text-ink">
+            <label htmlFor="atrasada" className="text-sm text-[var(--admin-text)]">
               Ação atrasada
             </label>
           </div>
@@ -152,9 +152,9 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
                 type="checkbox"
                 value="1"
                 defaultChecked={semCompra}
-                className="h-4 w-4 rounded border-zinc-300"
+                className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
               />
-              <label htmlFor="semCompra" className="text-sm text-ink">
+              <label htmlFor="semCompra" className="text-sm text-[var(--admin-text)]">
                 Sem compra há mais de
               </label>
             </div>
@@ -167,30 +167,30 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
                 aria-label="Dias sem compra"
               />
             </div>
-            <span className="pb-2 text-sm text-muted">dias</span>
+            <span className="pb-2 text-sm text-[var(--admin-text-secondary)]">dias</span>
           </div>
 
           <Button type="submit" variant="primary">
             Aplicar filtros
           </Button>
           {algumFiltroAtivo && (
-            <Link href="/admin/clientes" className="pb-2 text-sm font-medium text-muted underline hover:text-ink">
+            <Link href="/admin/clientes" className="pb-2 text-sm font-medium text-[var(--admin-text-secondary)] underline hover:text-[var(--admin-text)]">
               Limpar filtros
             </Link>
           )}
         </form>
       </Card>
 
-      {error && <p className="mt-4 text-sm text-red-600">Erro ao carregar clientes: {error.message}</p>}
+      {error && <p className="mt-4 text-sm text-[var(--admin-danger)]">Erro ao carregar clientes: {error.message}</p>}
 
       {!error && (!clientes || clientes.length === 0) && (
-        <p className="mt-6 text-sm text-muted">Nenhum cliente encontrado com esses filtros.</p>
+        <p className="mt-6 text-sm text-[var(--admin-text-secondary)]">Nenhum cliente encontrado com esses filtros.</p>
       )}
 
       {clientes && clientes.length > 0 && (
-        <div className="mt-6 overflow-x-auto rounded-md border border-zinc-200 bg-white">
+        <div className="mt-6 overflow-x-auto rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)]">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-muted">
+            <thead className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] text-xs uppercase text-[var(--admin-text-secondary)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Empresa</th>
                 <th className="px-4 py-3 font-medium">Comprador</th>
@@ -206,22 +206,25 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
               {clientes.map((cliente) => {
                 const urgencia = calcularUrgenciaProximaAcao(cliente.proxima_acao_data, hojeIso, amanhaIso);
                 return (
-                  <tr key={cliente.cliente_id} className="border-b border-zinc-100 last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink">
-                      <Link href={`/admin/clientes/${cliente.cliente_id}`} className="hover:text-brand-green hover:underline">
+                  <tr
+                    key={cliente.cliente_id}
+                    className="border-b border-[var(--admin-border)] transition-colors duration-150 last:border-0 hover:bg-[var(--admin-surface-hover)]"
+                  >
+                    <td className="px-4 py-3 font-medium text-[var(--admin-text)]">
+                      <Link href={`/admin/clientes/${cliente.cliente_id}`} className="hover:text-[var(--admin-green-text)] hover:underline">
                         {cliente.nome}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted">{cliente.nome_comprador ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted">{cliente.telefone ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted">{cliente.email}</td>
-                    <td className="px-4 py-3 text-muted">{cliente.segmento ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted">
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{cliente.nome_comprador ?? "—"}</td>
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{cliente.telefone ?? "—"}</td>
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{cliente.email}</td>
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{cliente.segmento ?? "—"}</td>
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">
                       {cliente.ultima_compra_em
                         ? new Date(cliente.ultima_compra_em).toLocaleDateString("pt-BR")
                         : "Nunca comprou"}
                     </td>
-                    <td className="px-4 py-3 text-muted">
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">
                       {cliente.valor_potencial != null
                         ? cliente.valor_potencial.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
                         : "—"}
@@ -237,7 +240,7 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
                           )}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted">Nenhuma definida</span>
+                        <span className="text-xs text-[var(--admin-text-secondary)]">Nenhuma definida</span>
                       )}
                     </td>
                   </tr>
@@ -249,18 +252,18 @@ export default async function AdminClientesPage({ searchParams }: AdminClientesP
       )}
 
       {clientes && clientes.length > 0 && totalPaginas > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-muted">
+        <div className="mt-4 flex items-center justify-between text-sm text-[var(--admin-text-secondary)]">
           <span>
             Página {paginaAtual} de {totalPaginas} ({totalFiltrado} cliente(s))
           </span>
           <div className="flex gap-3">
             {paginaAtual > 1 && (
-              <Link href={construirHrefPagina(paginaAtual - 1)} className="font-medium text-brand-green hover:underline">
+              <Link href={construirHrefPagina(paginaAtual - 1)} className="font-medium text-[var(--admin-green-text)] hover:underline">
                 ← Anterior
               </Link>
             )}
             {paginaAtual < totalPaginas && (
-              <Link href={construirHrefPagina(paginaAtual + 1)} className="font-medium text-brand-green hover:underline">
+              <Link href={construirHrefPagina(paginaAtual + 1)} className="font-medium text-[var(--admin-green-text)] hover:underline">
                 Próxima →
               </Link>
             )}

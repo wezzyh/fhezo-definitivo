@@ -14,16 +14,16 @@ export default async function NovoProdutoPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Novo produto</h1>
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Novo produto</h1>
         <Link
           href="/admin/produtos"
-          className="text-sm font-medium text-brand-green hover:underline"
+          className="text-sm font-medium text-[var(--admin-green-text)] hover:underline"
         >
           Voltar para a lista
         </Link>
       </div>
 
-      <div className="mt-6 max-w-2xl rounded-md border border-zinc-200 bg-white p-6">
+      <div className="mt-6 max-w-2xl rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6">
         <FormularioProduto
           marcasIniciais={marcas ?? []}
           categoriasIniciais={categorias ?? []}

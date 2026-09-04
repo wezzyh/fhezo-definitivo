@@ -27,13 +27,13 @@ export default async function EditarBannerPage({ params }: EditarBannerPageProps
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Editar banner</h1>
-        <Link href="/admin/conteudo/banners" className="text-sm font-medium text-brand-green hover:underline">
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Editar banner</h1>
+        <Link href="/admin/conteudo/banners" className="text-sm font-medium text-[var(--admin-green-text)] hover:underline">
           Voltar para a lista
         </Link>
       </div>
 
-      <div className="mt-6 max-w-xl rounded-md border border-zinc-200 bg-white p-6">
+      <div className="mt-6 max-w-xl rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6">
         <FormularioBanner banner={banner} action={atualizarComId} textoBotao="Publicar nova versão" />
       </div>
     </div>

@@ -4,13 +4,8 @@
 
 import Link from "next/link";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
-import {
-  buscarIntegracaoMelhorEnvio,
-  montarUrlAutorizacaoMelhorEnvio,
-  obterTokenValidoMelhorEnvio,
-} from "@/lib/integracoes/melhorenvio";
-import { buscarIntegracaoBling, montarUrlAutorizacaoBling, obterTokenValidoBling } from "@/lib/integracoes/bling";
-import { BotaoSincronizarEstoqueBling } from "./integracao/bling/botao-sincronizar-estoque";
+import { buscarIntegracaoMelhorEnvio, obterTokenValidoMelhorEnvio } from "@/lib/integracoes/melhorenvio";
+import { buscarIntegracaoBling, obterTokenValidoBling } from "@/lib/integracoes/bling";
 import { BotaoReenviarPedidoBling } from "./integracao/bling/botao-reenviar-pedido";
 import { Card } from "@/components/ui/card";
 import { isoDiasAtras, isoDataMaisDias } from "@/lib/data/tempo";
@@ -27,14 +22,6 @@ const LIMITE_ESTOQUE_BAIXO = 10;
 // hoje um jeito de marcar um evento como "resolvido").
 const DIAS_EVENTOS_RECENTES = 7;
 
-interface PaginaAdminProps {
-  searchParams: Promise<{
-    integracao?: string;
-    integracaoBling?: string;
-    mensagem?: string;
-  }>;
-}
-
 interface ItemCentralAcoes {
   titulo: string;
   contagem: number | null;
@@ -43,13 +30,7 @@ interface ItemCentralAcoes {
   descricao: string;
 }
 
-export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
-  const {
-    integracao: statusIntegracao,
-    integracaoBling: statusIntegracaoBling,
-    mensagem: mensagemIntegracao,
-  } = await searchParams;
-
+export default async function PaginaAdmin() {
   const supabase = await criarClienteSupabaseServidor();
 
   const desdeEventosRecentes = isoDiasAtras(DIAS_EVENTOS_RECENTES);
@@ -129,40 +110,13 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
   const pagamentosFalhos = (pedidosStatus ?? []).filter((pedido) => pedido.status === "cancelado").length;
 
   const conectado = Boolean(integracaoMelhorEnvio?.access_token);
-  const expiraEm = integracaoMelhorEnvio?.expira_em
-    ? new Date(integracaoMelhorEnvio.expira_em).toLocaleString("pt-BR")
-    : null;
   // "Com erro" de verdade = não conseguimos um token utilizável AGORA
   // (renovação real tentada acima, via obterTokenValidoMelhorEnvio) — não
   // é o mesmo que o último access_token ter vencido, o que é normal e
   // se resolve sozinho via refresh_token a cada uso.
   const melhorEnvioComErro = conectado && !tokenMelhorEnvioValido;
-
-  let urlAutorizacao: string | null = null;
-  let erroConfiguracao: string | null = null;
-  try {
-    urlAutorizacao = montarUrlAutorizacaoMelhorEnvio();
-  } catch (erro) {
-    erroConfiguracao =
-      erro instanceof Error ? erro.message : "Integração com o Melhor Envio não configurada.";
-  }
-
   const conectadoBling = Boolean(integracaoBling?.access_token);
-  const expiraEmBling = integracaoBling?.expira_em
-    ? new Date(integracaoBling.expira_em).toLocaleString("pt-BR")
-    : null;
   const blingComErro = conectadoBling && !tokenBlingValido;
-  const ultimaSincronizacaoBling = integracaoBling?.ultima_sincronizacao
-    ? new Date(integracaoBling.ultima_sincronizacao).toLocaleString("pt-BR")
-    : null;
-
-  let urlAutorizacaoBling: string | null = null;
-  let erroConfiguracaoBling: string | null = null;
-  try {
-    urlAutorizacaoBling = montarUrlAutorizacaoBling();
-  } catch (erro) {
-    erroConfiguracaoBling = erro instanceof Error ? erro.message : "Integração com o Bling não configurada.";
-  }
 
   const integracoesComErro = (!conectado || melhorEnvioComErro ? 1 : 0) + (!conectadoBling || blingComErro ? 1 : 0);
 
@@ -200,9 +154,9 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
       descricao: `Abaixo de ${LIMITE_ESTOQUE_BAIXO} unidades.`,
     },
     {
-      titulo: "Integrações com erro",
+      titulo: "Integrações",
       contagem: integracoesComErro,
-      href: "#integracoes",
+      href: "/admin/integracao",
       descricao: "Bling e/ou Melhor Envio desconectados ou com token vencido.",
     },
     {
@@ -233,42 +187,56 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-ink">Dashboard</h1>
+      <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Dashboard</h1>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cartoesResumo.map((cartao) => (
           <Card key={cartao.titulo}>
-            <p className="text-sm font-medium text-muted">{cartao.titulo}</p>
-            <p className="mt-2 text-2xl font-medium text-ink">{cartao.valor}</p>
+            <p className="text-sm font-medium text-[var(--admin-text-secondary)]">{cartao.titulo}</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--admin-text)]">{cartao.valor}</p>
           </Card>
         ))}
       </div>
 
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-ink">Central de ações</h2>
-        <p className="mt-1 text-sm text-muted">O que precisa da sua atenção agora — cada item leva direto para resolver.</p>
+        <h2 className="text-lg font-semibold text-[var(--admin-text)]">Central de ações</h2>
+        <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
+          O que precisa da sua atenção agora — cada item leva direto para resolver.
+        </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {centralDeAcoes.map((item) => {
             const conteudo = (
-              <Card className={item.href ? "h-full transition-shadow hover:shadow-sm" : "h-full opacity-75"}>
-                <p className="text-sm font-medium text-muted">{item.titulo}</p>
+              <Card
+                className={`h-full transition-colors duration-150 ${
+                  item.href
+                    ? "hover:border-[var(--admin-border-strong)] hover:bg-[var(--admin-surface-hover)]"
+                    : "opacity-75"
+                }`}
+              >
+                <p className="text-sm font-medium text-[var(--admin-text-secondary)]">{item.titulo}</p>
                 <div className="mt-2">
                   {item.contagem === null ? (
-                    <span className="text-sm font-medium text-muted">{item.textoPlaceholder}</span>
+                    <span className="text-sm font-medium text-[var(--admin-text-secondary)]">
+                      {item.textoPlaceholder}
+                    </span>
                   ) : (
                     <span
-                      className={`inline-flex items-center rounded-full px-3 py-1 text-xl font-semibold ${
-                        item.contagem === 0 ? "bg-brand-green/10 text-brand-green-dark" : "bg-warning/15 text-dark-2"
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xl font-semibold tabular-nums ${
+                        item.contagem === 0
+                          ? "bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                          : "bg-[var(--admin-warning)]/15 text-[var(--admin-warning)]"
                       }`}
                     >
                       {item.contagem}
                     </span>
                   )}
                 </div>
-                <p className="mt-2 text-xs text-muted">{item.descricao}</p>
+                <p className="mt-2 text-xs text-[var(--admin-text-secondary)]">{item.descricao}</p>
                 {item.href && (
-                  <span className="mt-2 inline-block text-xs font-medium text-brand-green">Resolver →</span>
+                  <span className="mt-2 inline-block text-xs font-medium text-[var(--admin-green-text)]">
+                    Resolver →
+                  </span>
                 )}
               </Card>
             );
@@ -285,18 +253,20 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
       </div>
 
       <Card id="estoque-critico" className="mt-8 scroll-mt-20 p-6">
-        <h2 className="text-lg font-semibold text-ink">Estoque crítico</h2>
-        <p className="mt-1 text-sm text-muted">
+        <h2 className="text-lg font-semibold text-[var(--admin-text)]">Estoque crítico</h2>
+        <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
           Produtos com estoque abaixo de {LIMITE_ESTOQUE_BAIXO} unidades, do mais crítico para o
           menos crítico.
         </p>
 
         {produtosEstoqueBaixo.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">Nenhum produto abaixo do limite de estoque. 🎉</p>
+          <p className="mt-4 text-sm text-[var(--admin-text-secondary)]">
+            Nenhum produto abaixo do limite de estoque.
+          </p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200">
+          <div className="mt-4 overflow-x-auto rounded-md border border-[var(--admin-border)]">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-muted">
+              <thead className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] text-xs uppercase text-[var(--admin-text-secondary)]">
                 <tr>
                   <th className="px-4 py-3 font-medium">Produto</th>
                   <th className="px-4 py-3 font-medium">SKU</th>
@@ -305,11 +275,14 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
               </thead>
               <tbody>
                 {produtosEstoqueBaixo.map((produto) => (
-                  <tr key={produto.id} className="border-b border-zinc-100 last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink">{produto.nome}</td>
-                    <td className="px-4 py-3 text-muted">{produto.sku}</td>
+                  <tr
+                    key={produto.id}
+                    className="border-b border-[var(--admin-border)] transition-colors duration-150 last:border-0 hover:bg-[var(--admin-surface-hover)]"
+                  >
+                    <td className="px-4 py-3 font-medium text-[var(--admin-text)]">{produto.nome}</td>
+                    <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{produto.sku}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-dark-2">
+                      <span className="rounded-full bg-[var(--admin-warning)]/15 px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--admin-warning)]">
                         {produto.estoque}
                       </span>
                     </td>
@@ -324,8 +297,8 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
       <Card className="mt-8 p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-ink">Produtos do Bling aguardando revisão</h2>
-            <p className="mt-1 text-sm text-muted">
+            <h2 className="text-lg font-semibold text-[var(--admin-text)]">Produtos do Bling aguardando revisão</h2>
+            <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
               Importados automaticamente na sincronização de estoque — revise categoria, preço,
               peso/dimensões e fotos antes de ativar.
             </p>
@@ -333,7 +306,7 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
           {produtosPendentesRevisao.length > 0 && (
             <Link
               href="/admin/produtos?revisao=1"
-              className="shrink-0 text-sm font-medium text-brand-green hover:underline"
+              className="shrink-0 text-sm font-medium text-[var(--admin-green-text)] hover:underline"
             >
               Ver em Produtos →
             </Link>
@@ -341,18 +314,20 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
         </div>
 
         {produtosPendentesRevisao.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">Nenhum produto do Bling aguardando revisão.</p>
+          <p className="mt-4 text-sm text-[var(--admin-text-secondary)]">
+            Nenhum produto do Bling aguardando revisão.
+          </p>
         ) : (
-          <div className="mt-4 divide-y divide-zinc-200 rounded-md border border-zinc-200">
+          <div className="mt-4 divide-y divide-[var(--admin-border)] rounded-md border border-[var(--admin-border)]">
             {produtosPendentesRevisao.map((produto) => (
               <div key={produto.id} className="flex items-center justify-between gap-4 p-4">
                 <div>
-                  <p className="font-medium text-ink">{produto.nome}</p>
-                  <p className="mt-1 text-xs text-muted">SKU {produto.sku}</p>
+                  <p className="font-medium text-[var(--admin-text)]">{produto.nome}</p>
+                  <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">SKU {produto.sku}</p>
                 </div>
                 <Link
                   href={`/admin/produtos/${produto.id}/editar`}
-                  className="shrink-0 text-sm font-medium text-brand-green hover:underline"
+                  className="shrink-0 text-sm font-medium text-[var(--admin-green-text)] hover:underline"
                 >
                   Revisar
                 </Link>
@@ -363,29 +338,33 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
       </Card>
 
       <Card id="bling-nao-sincronizado" className="mt-8 scroll-mt-20 p-6">
-        <h2 className="text-lg font-semibold text-ink">Pedidos pagos não sincronizados com o Bling</h2>
-        <p className="mt-1 text-sm text-muted">
+        <h2 className="text-lg font-semibold text-[var(--admin-text)]">
+          Pedidos pagos não sincronizados com o Bling
+        </h2>
+        <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
           O pagamento desses pedidos já foi confirmado — a falha foi só ao enviar para o Bling.
         </p>
 
         {(!pedidosNaoSincronizados || pedidosNaoSincronizados.length === 0) && (
-          <p className="mt-4 text-sm text-muted">Nenhum pedido pago pendente de sincronização. 🎉</p>
+          <p className="mt-4 text-sm text-[var(--admin-text-secondary)]">
+            Nenhum pedido pago pendente de sincronização.
+          </p>
         )}
 
         {pedidosNaoSincronizados && pedidosNaoSincronizados.length > 0 && (
-          <div className="mt-4 divide-y divide-zinc-200 rounded-md border border-zinc-200">
+          <div className="mt-4 divide-y divide-[var(--admin-border)] rounded-md border border-[var(--admin-border)]">
             {pedidosNaoSincronizados.map((pedido) => (
               <div key={pedido.id} className="flex items-center justify-between gap-4 p-4">
                 <div>
-                  <p className="font-medium text-ink">
+                  <p className="font-medium text-[var(--admin-text)]">
                     Pedido #{pedido.id.replace(/-/g, "").slice(0, 8).toUpperCase()} —{" "}
                     {pedido.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
                     {new Date(pedido.created_at).toLocaleString("pt-BR")}
                   </p>
                   {pedido.bling_erro_sincronizacao && (
-                    <p className="mt-1 text-xs text-red-600">{pedido.bling_erro_sincronizacao}</p>
+                    <p className="mt-1 text-xs text-[var(--admin-danger)]">{pedido.bling_erro_sincronizacao}</p>
                   )}
                 </div>
                 <BotaoReenviarPedidoBling pedidoId={pedido.id} />
@@ -393,94 +372,6 @@ export default async function PaginaAdmin({ searchParams }: PaginaAdminProps) {
             ))}
           </div>
         )}
-      </Card>
-
-      <Card id="integracoes" className="mt-8 scroll-mt-20 p-6">
-        <h2 className="text-lg font-semibold text-ink">Integrações</h2>
-
-        {statusIntegracao === "sucesso" && (
-          <p className="mt-3 rounded-md bg-brand-green/10 px-3 py-2 text-sm text-brand-green-dark">
-            {mensagemIntegracao ?? "Integração conectada com sucesso."}
-          </p>
-        )}
-        {statusIntegracao === "erro" && (
-          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {mensagemIntegracao ?? "Não foi possível concluir a integração."}
-          </p>
-        )}
-        {statusIntegracaoBling === "sucesso" && (
-          <p className="mt-3 rounded-md bg-brand-green/10 px-3 py-2 text-sm text-brand-green-dark">
-            {mensagemIntegracao ?? "Integração conectada com sucesso."}
-          </p>
-        )}
-        {statusIntegracaoBling === "erro" && (
-          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {mensagemIntegracao ?? "Não foi possível concluir a integração."}
-          </p>
-        )}
-
-        <div className="mt-4 flex flex-col gap-4 rounded-md border border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink">Melhor Envio</p>
-            <p className="mt-1 text-sm text-muted">
-              {conectado
-                ? melhorEnvioComErro
-                  ? "Não foi possível renovar o token automaticamente. Reconecte para voltar a calcular frete."
-                  : `Conectado. Token válido até ${expiraEm ?? "data desconhecida"}.`
-                : "Não conectado. Conecte para habilitar o cálculo de frete no checkout."}
-            </p>
-          </div>
-
-          {urlAutorizacao ? (
-            <a
-              href={urlAutorizacao}
-              className="inline-flex shrink-0 items-center justify-center rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-white hover:bg-brand-green-dark"
-            >
-              {conectado ? "Reconectar com Melhor Envio" : "Conectar com Melhor Envio"}
-            </a>
-          ) : (
-            <p className="text-sm text-red-600">{erroConfiguracao}</p>
-          )}
-        </div>
-
-        <div className="mt-4 rounded-md border border-zinc-200 p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-ink">Bling (ERP)</p>
-              <p className="mt-1 text-sm text-muted">
-                {conectadoBling
-                  ? blingComErro
-                    ? "Não foi possível renovar o token automaticamente. Reconecte para voltar a sincronizar."
-                    : `Conectado. Token válido até ${expiraEmBling ?? "data desconhecida"}.`
-                  : "Não conectado. Conecte para sincronizar estoque e enviar pedidos pagos."}
-              </p>
-              {conectadoBling && (
-                <p className="mt-1 text-xs text-muted">
-                  {ultimaSincronizacaoBling
-                    ? `Última sincronização de estoque: ${ultimaSincronizacaoBling}`
-                    : "Ainda sem sincronização de estoque."}
-                </p>
-              )}
-            </div>
-
-            {urlAutorizacaoBling ? (
-              <a
-                href={urlAutorizacaoBling}
-                className="inline-flex shrink-0 items-center justify-center rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-white hover:bg-brand-green-dark"
-              >
-                {conectadoBling ? "Reconectar com Bling" : "Conectar com Bling"}
-              </a>
-            ) : (
-              <p className="text-sm text-red-600">{erroConfiguracaoBling}</p>
-            )}
-          </div>
-
-          {conectadoBling && (
-            <div className="mt-4 border-t border-zinc-200 pt-4">
-              <BotaoSincronizarEstoqueBling />
-            </div>
-          )}
-        </div>
       </Card>
     </div>
   );

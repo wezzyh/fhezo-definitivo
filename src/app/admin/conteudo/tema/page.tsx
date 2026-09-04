@@ -23,12 +23,12 @@ export default async function AdminTemaPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-ink">Tema</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Tema</h1>
+      <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
         Cores da marca usadas em todo o site. Alterar aqui não exige mudar código nem pedir ajuda ao Claude Code.
       </p>
 
-      <div className="mt-6 max-w-xl rounded-md border border-zinc-200 bg-white p-6">
+      <div className="mt-6 max-w-xl rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6">
         <EditorTema coresIniciais={cores} />
       </div>
 

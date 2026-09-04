@@ -12,9 +12,9 @@ export default async function PaginaInicial() {
   const banners = bannersVisiveisAgora(bannersPublicados);
 
   return (
-    <div className="bg-page">
+    <div className="bg-warm-100">
       {banners.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 py-6">
+        <section className="mx-auto w-full max-w-store px-4 py-6 sm:px-5">
           <div className="flex gap-4 overflow-x-auto">
             {banners.map((banner) => {
               const dados = banner.dados as unknown as DadosBanner;
@@ -23,7 +23,7 @@ export default async function PaginaInicial() {
                 <img
                   src={dados.imagem_url}
                   alt={dados.titulo ?? ""}
-                  className="h-40 w-full shrink-0 rounded-md object-cover sm:w-80"
+                  className="h-40 w-full shrink-0 rounded-fhezo object-cover sm:w-80"
                 />
               );
               return dados.link_url ? (

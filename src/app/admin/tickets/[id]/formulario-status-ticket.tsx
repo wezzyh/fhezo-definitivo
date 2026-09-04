@@ -43,7 +43,7 @@ export function FormularioStatusTicket({ ticketId, statusAtual }: FormularioStat
       <Button type="button" variant="outline" disabled={salvando || status === statusAtual} onClick={salvar}>
         {salvando ? "Salvando..." : "Salvar status"}
       </Button>
-      {erro && <p className="text-xs text-red-600">{erro}</p>}
+      {erro && <p className="text-xs text-[var(--admin-danger)]">{erro}</p>}
     </div>
   );
 }

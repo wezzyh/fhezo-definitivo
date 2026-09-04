@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Barlow } from "next/font/google";
 import "./globals.css";
 import { obterTemaPublicado } from "@/lib/conteudo/consultas";
 
@@ -9,6 +9,15 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+});
+
+// Fonte de destaque (títulos/preços) do novo visual público — ver
+// referencia-novo-frontend. Só isso, o corpo de texto continua em Inter
+// (--font-sans); Barlow entra como --font-display, usada pontualmente.
+const barlow = Barlow({
+  variable: "--font-barlow",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,7 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const variaveisCss = `:root{--color-brand-green:${tema.cores.brand_green};--color-brand-green-dark:${tema.cores.brand_green_dark};--color-dark:${tema.cores.dark};--color-dark-2:${tema.cores.dark_2};--color-page:${tema.cores.page};--color-ink:${tema.cores.ink};--color-muted:${tema.cores.muted};--color-warning:${tema.cores.warning};}`;
 
   return (
-    <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
+    <html lang="pt-BR" className={`${inter.variable} ${barlow.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <style>{variaveisCss}</style>
         {children}

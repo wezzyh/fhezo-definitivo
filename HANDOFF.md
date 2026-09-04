@@ -146,6 +146,92 @@ Menu e tema foram migrados **exatamente como estavam** (idempotente via `where n
 
 Pra um item de menu `tipo: "categoria"` fazer sentido, `/produtos` (`src/app/(site)/produtos/page.tsx`) passou a aceitar `?categoria=<slug>` (match exato por `categoria_id`, sem incluir subcategorias) — antes desta mudança a página ignorava completamente qualquer query param, inclusive o `?busca=` que o formulário de busca do header já envia (esse continua sem uso — fora do escopo desta mudança).
 
+## Integração do novo frontend visual (referencia-novo-frontend/) — EM ANDAMENTO, pausada
+
+Objetivo: reestilizar as páginas públicas (home, listagem, produto) e transformar o carrinho
+em painel lateral (drawer), usando `referencia-novo-frontend/` (projeto Vite/React separado,
+só mock visual — `node_modules`/`tsconfig` próprios, excluído do build principal via
+`tsconfig.json`) como referência. **Checkout, admin, autenticação e integrações
+(Bling/Melhor Envio/Asaas) ficam fora de escopo**, exceto um campo aditivo no formulário de
+produto (ver abaixo).
+
+Decisões já fechadas com o usuário (não reabrir sem confirmar de novo):
+- Paleta nova adotada do zero (tokens `fhezo-*`/`ink-*`/`warm-*` em `globals.css`, fonte Barlow
+  como `--font-display`) — `/admin/conteudo/tema` deixa de afetar as páginas migradas (aceito
+  pelo usuário).
+- Header pode ficar com o visual novo mesmo aparecendo em cima do checkout (mesmo layout
+  compartilhado hoje) — conteúdo/fluxo do checkout continua intocado.
+- Preço "de/por", desconto Pix (5% fixo) e parcelamento (até 6x, mínimo R$50/parcela) foram
+  implementados como dado REAL (campo novo no banco + regra utilitária), não fake.
+- Avaliações/estrelas do mock ficaram de fora da integração (exigiria moderação, que tocaria
+  admin — fora de escopo).
+- A página `/carrinho` (rota cheia) será **removida** quando o drawer entrar (Etapa 3).
+
+Plano completo em 4 etapas (aprovado pelo usuário) está salvo em
+`C:\Users\ZMK Maquinas\.claude\plans\twinkly-cooking-boot.md` — arquivo local desta máquina,
+**não versionado no repo**. Se não existir mais, reconstrua a partir desta seção + do
+histórico da conversa onde foi aprovado.
+
+### Feito até agora
+
+- **Etapa 0 (preparação, sem efeito visual)**: `tsconfig.json` exclui `referencia-novo-frontend`
+  (antes excluía `fhezo-store`, nome da pasta antes de ser renomeada);
+  `@phosphor-icons/react` instalado; fonte Barlow adicionada em `src/app/layout.tsx` como
+  `--font-barlow` (exposta como token Tailwind `--font-display` em `globals.css`); tokens
+  novos (`fhezo-*`, `ink-*`, `warm-*`, `--radius-fhezo`, sombras `subtle/panel/drawer`)
+  adicionados a `src/app/globals.css` **sem remover nenhum token `--color-*` antigo** —
+  checkout continua usando os antigos.
+- **Etapa 1 (visual de home/listagem/produto)**: feita e testada no navegador.
+  - Reescritos: `src/app/(site)/page.tsx`, `secoes-home.tsx`, `produtos/page.tsx`,
+    `produtos/[id]/page.tsx`, `produtos/[id]/botao-adicionar-carrinho.tsx` — todos continuam
+    buscando dado real do Supabase/CMS exatamente como antes, só o JSX/classes mudaram.
+  - Novo: `src/components/produtos/cartao-produto.tsx` (card de produto usado em
+    home/listagem/similares).
+  - Novo campo real `produtos.preco_de` (opcional, "preço riscado" pra desconto de/por):
+    migration `supabase/migrations/0015_produtos_preco_de.sql`, tipo em
+    `src/types/database.ts`, validação/persistência em `src/app/admin/produtos/actions.ts`,
+    campo no formulário `src/app/admin/produtos/formulario-produto.tsx` (única mudança em
+    `/admin` desta integração — aditiva).
+  - Novo: `src/lib/produtos/precificacao.ts` (desconto de/por, Pix 5%, parcelamento até
+    6x/mín. R$50/parcela — só exibição, não muda cobrança real do checkout).
+  - `tsc`/`eslint`/`build` passando limpos. Testado visualmente: home, listagem, produto (com
+    e sem imagem, com e sem estoque), adicionar ao carrinho, `/carrinho` e `/checkout`
+    recebendo os itens reais corretamente (checkout continua pixel-a-pixel igual).
+
+### Pendente — rodar antes de editar produtos no admin
+
+**Migration 0015 ainda não foi aplicada no banco de produção.** Até rodar, salvar/editar
+qualquer produto no admin falha (erro de coluna `preco_de` inexistente no schema cache do
+PostgREST) — a leitura pública funciona normalmente sem ela (`select *` simplesmente não traz
+a coluna, tratado como `undefined`/sem desconto). SQL a rodar no SQL Editor do Supabase:
+
+```sql
+alter table produtos add column if not exists preco_de numeric null;
+
+comment on column produtos.preco_de is 'Preço "de" (riscado), opcional, só para exibição de desconto na loja. Null = sem desconto exibido. O preço real cobrado continua sendo "preco".';
+```
+
+### Por onde continuar
+
+Retomar direto na **Etapa 2 (header)**: reestilizar `src/components/layout/header.tsx` no
+visual do mock (`referencia-novo-frontend/src/components/layout/Header.tsx`), mantendo logo
+real, busca via `<form action="/produtos" method="get">` (sem lógica nova), menu dinâmico
+(`src/components/layout/nav.tsx` — continua lendo `conteudo_site` tipo "menu", **não** virar
+mega-menu hardcoded como no mock) e o contador do carrinho (`indicador-carrinho.tsx`) ainda
+linkando para `/carrinho` normalmente (abrir como drawer só entra na Etapa 3, de propósito,
+pra isolar risco).
+
+Depois, **Etapa 3 (carrinho em drawer — a mais arriscada, por último)**: estender
+`src/lib/carrinho/contexto.tsx` com `aberto`/`abrirCarrinho`/`fecharCarrinho` (mesmo Context —
+o carrinho continua sendo a mesma fonte de dados usada pelo checkout, sem duplicar estado),
+criar `src/components/layout/carrinho-drawer.tsx` (visual baseado em
+`referencia-novo-frontend/src/components/cart/CartDrawer.tsx`), trocar o link do contador do
+header por um botão que chama `abrirCarrinho()`, e remover `src/app/(site)/carrinho/page.tsx`.
+
+Testar cada etapa no navegador antes de avançar pra próxima, como nas etapas anteriores — o
+usuário pediu explicitamente pra parar ao final de cada etapa e mostrar o resultado antes de
+continuar.
+
 ## Convenções do projeto (siga estas, não as genéricas)
 
 - **Tudo em português**: nomes de função/variável, comentários, mensagens de erro, labels de UI. Nomes de coluna do banco em `snake_case` batem exatamente com os campos TS em `src/types/database.ts` (sem camada de tradução).

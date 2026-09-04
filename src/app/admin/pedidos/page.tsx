@@ -40,8 +40,8 @@ export default async function AdminPedidosPage({ searchParams }: AdminPedidosPag
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Pedidos</h1>
-        <Link href="/admin" className="text-sm font-medium text-brand-green hover:underline">
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Pedidos</h1>
+        <Link href="/admin" className="text-sm font-medium text-[var(--admin-green-text)] hover:underline">
           Voltar ao dashboard
         </Link>
       </div>
@@ -51,8 +51,8 @@ export default async function AdminPedidosPage({ searchParams }: AdminPedidosPag
           href="/admin/pedidos"
           className={`rounded-full border px-3 py-1 text-xs font-medium ${
             !statusFiltro
-              ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-              : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+              ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+              : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-green-text)]"
           }`}
         >
           Todos
@@ -63,8 +63,8 @@ export default async function AdminPedidosPage({ searchParams }: AdminPedidosPag
             href={`/admin/pedidos?status=${status}`}
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
               statusFiltro === status
-                ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-                : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+                ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-green-text)]"
             }`}
           >
             {TEXTO_STATUS_PEDIDO[status]}
@@ -72,16 +72,16 @@ export default async function AdminPedidosPage({ searchParams }: AdminPedidosPag
         ))}
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">Erro ao carregar pedidos: {error.message}</p>}
+      {error && <p className="mt-4 text-sm text-[var(--admin-danger)]">Erro ao carregar pedidos: {error.message}</p>}
 
       {!error && (!pedidos || pedidos.length === 0) && (
-        <p className="mt-6 text-sm text-muted">Nenhum pedido encontrado com esse filtro.</p>
+        <p className="mt-6 text-sm text-[var(--admin-text-secondary)]">Nenhum pedido encontrado com esse filtro.</p>
       )}
 
       {pedidos && pedidos.length > 0 && (
-        <div className="mt-6 overflow-x-auto rounded-md border border-zinc-200 bg-white">
+        <div className="mt-6 overflow-x-auto rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)]">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-muted">
+            <thead className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] text-xs uppercase text-[var(--admin-text-secondary)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Pedido</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
@@ -93,15 +93,18 @@ export default async function AdminPedidosPage({ searchParams }: AdminPedidosPag
             </thead>
             <tbody>
               {pedidos.map((pedido) => (
-                <tr key={pedido.id} className="border-b border-zinc-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-muted">
+                <tr
+                  key={pedido.id}
+                  className="border-b border-[var(--admin-border)] transition-colors duration-150 last:border-0 hover:bg-[var(--admin-surface-hover)]"
+                >
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text-secondary)]">
                     #{pedido.id.replace(/-/g, "").slice(0, 8).toUpperCase()}
                   </td>
-                  <td className="px-4 py-3 font-medium text-ink">{pedido.cliente?.nome ?? "—"}</td>
-                  <td className="px-4 py-3 font-medium text-ink">
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text)]">{pedido.cliente?.nome ?? "—"}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text)]">
                     {pedido.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </td>
-                  <td className="px-4 py-3 text-muted">{new Date(pedido.created_at).toLocaleString("pt-BR")}</td>
+                  <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{new Date(pedido.created_at).toLocaleString("pt-BR")}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${classesBadgeStatusPedido(pedido.status)}`}
@@ -113,7 +116,7 @@ export default async function AdminPedidosPage({ searchParams }: AdminPedidosPag
                     {STATUS_COM_ENVIO_EDITAVEL.includes(pedido.status) ? (
                       <FormularioStatusEnvio pedidoId={pedido.id} statusAtual={pedido.status} />
                     ) : (
-                      <span className="text-xs text-muted">—</span>
+                      <span className="text-xs text-[var(--admin-text-secondary)]">—</span>
                     )}
                   </td>
                 </tr>

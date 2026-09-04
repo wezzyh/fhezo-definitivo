@@ -27,7 +27,204 @@
   --font-sans: var(--font-inter), sans-serif;
 }
 
+/*
+ * ---------------------------------------------------------------------
+ * Tokens do NOVO VISUAL PÚBLICO (integração de referencia-novo-frontend/).
+ * ---------------------------------------------------------------------
+ * Paleta própria, deliberadamente separada dos tokens --color-* acima:
+ * essa paleta antiga continua existindo e em uso no CHECKOUT (que não
+ * muda nesta integração) e é a que /admin/conteudo/tema edita. As cores
+ * abaixo (fhezo-*, ink-*, warm-*) NÃO são afetadas pelo painel de tema —
+ * consequência aceita explicitamente pelo usuário ao escolher adotar a
+ * paleta nova "do zero" em vez de remapear pros tokens antigos.
+ */
+@theme inline {
+  --color-fhezo-50: #eef8f1;
+  --color-fhezo-100: #d9f0df;
+  --color-fhezo-200: #b5dfc0;
+  --color-fhezo-300: #84c997;
+  --color-fhezo-400: #52af70;
+  --color-fhezo-500: #2f9555;
+  --color-fhezo-600: #217944;
+  --color-fhezo-700: #1c6139;
+  --color-fhezo-800: #194d30;
+  --color-fhezo-900: #153f29;
+  --color-fhezo-950: #092319;
+
+  --color-ink-50: #f5f7f6;
+  --color-ink-100: #e7eae8;
+  --color-ink-200: #d0d5d2;
+  --color-ink-300: #adb5b0;
+  --color-ink-400: #818c85;
+  --color-ink-500: #616c65;
+  --color-ink-600: #4d5650;
+  --color-ink-700: #3e4641;
+  --color-ink-800: #242a27;
+  --color-ink-900: #151917;
+  --color-ink-950: #0a0d0b;
+
+  --color-warm-50: #fafaf9;
+  --color-warm-100: #f5f5f3;
+  --color-warm-200: #e8e8e5;
+
+  --color-fhezo-warning: #f6c500;
+  --color-fhezo-danger: #c63e3e;
+
+  --font-display: var(--font-barlow), "Arial Narrow", sans-serif;
+
+  --radius-fhezo: 18px;
+
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-panel: 0 8px 30px rgba(12, 18, 14, 0.08);
+  --shadow-drawer: -18px 0 50px rgba(0, 0, 0, 0.18);
+
+  --container-store: 1520px;
+}
+
 body {
   background: var(--color-page);
   color: var(--color-ink);
+}
+
+/*
+ * ---------------------------------------------------------------------
+ * Design tokens do PAINEL ADMINISTRATIVO (/admin) — Fase A do redesign.
+ * ---------------------------------------------------------------------
+ * Escopados inteiramente sob [data-admin-theme] (aplicado no elemento
+ * raiz do admin — ver src/components/admin/admin-shell.tsx), NUNCA em
+ * :root. Isso é proposital: o site público usa as variáveis --color-*
+ * acima (brand-green, dark, page, ink, muted, warning — editáveis pelo
+ * admin em /admin/conteudo/tema) e este bloco não pode tocar em nenhuma
+ * delas nem em nada fora do admin.
+ *
+ * Os únicos pontos onde admin e site público se encontram são
+ * componentes visuais COMPARTILHADOS (hoje só Button). Esses usam a
+ * sintaxe `bg-[var(--admin-x,var(--color-y))]`: dentro do admin,
+ * --admin-x existe e vence; fora dele (site público), a variável não
+ * existe e o fallback --color-y (o token público de sempre) é usado —
+ * o público continua pixel-a-pixel igual a antes. Ver comentário no
+ * topo de src/components/ui/button.tsx.
+ *
+ * Paleta: preto/cinza muito escuro + verde profundo (não neon) + branco
+ * — deliberadamente distinta do brand-green público (#009B6C), pra um
+ * verde mais sofisticado/discreto sobre fundo escuro.
+ *
+ * Espaçamento: usa a escala padrão do Tailwind (4/8/12/16/20/24/32/40/48px
+ * = 1/2/3/4/5/6/8/10/12) — já bate exatamente com o pedido, sem token
+ * próprio necessário.
+ *
+ * Border radius (convenção de uso, sem token novo — escala padrão do
+ * Tailwind): inputs/botões = rounded-md (6px); cards = rounded-lg/xl
+ * (8–12px); modais = rounded-xl (12px).
+ */
+[data-admin-theme] {
+  /* Superfícies, da mais "ao fundo" para a mais "elevada" */
+  --admin-bg: #090b0a; /* fundo da área de conteúdo */
+  --admin-chrome: #0d100f; /* fundo da sidebar/header */
+  --admin-surface: #111512; /* cards e painéis (Fase B) */
+  --admin-surface-hover: #151a17; /* hover de itens de lista/nav */
+  --admin-surface-active: #16241d; /* fundo do item de nav ativo */
+
+  /* Bordas */
+  --admin-border: #222824;
+  --admin-border-strong: #2b322c;
+
+  /* Verde — ações, destaque, estado ativo */
+  --admin-green: #439a6a;
+  --admin-green-hover: #4dae78;
+  --admin-green-active: #225a3c;
+  --admin-green-text: #6cc094; /* uso em TEXTO sobre fundo escuro (contraste maior que --admin-green) */
+
+  /* Texto */
+  --admin-text: #f4f7f5;
+  --admin-text-secondary: #9ca6a0;
+  --admin-text-disabled: #626b66;
+
+  /* Semânticas */
+  --admin-danger: #d9524b;
+  --admin-danger-hover: #e2645e;
+  --admin-warning: #c99a4c;
+  --admin-focus: #56b17e;
+
+  /* Elevação — uso pontual (dropdowns/popovers, modais), nunca pra separar cards do fundo */
+  --admin-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+}
+
+/*
+ * Microinterações do admin (Fase C) — só entrada, sem animação de saída
+ * (o componente desmonta na hora ao fechar; trade-off deliberado pra não
+ * complicar o Modal com estado de "fechando"). Duração curta (120–220ms)
+ * de propósito — o objetivo é parecer rápido, não "produzido".
+ */
+@keyframes admin-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes admin-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Checkbox nativo do admin (Problema 2 da varredura visual): sem isto,
+ * <input type="checkbox"> renderiza com a caixa branca padrão do
+ * navegador em qualquer estado, mesmo com border-* customizada — o
+ * quadrado branco chapado destoava do fundo escuro em toda tela com
+ * seleção (Produtos, Clientes, formulários "ativo"). Reset via
+ * appearance:none + desenho próprio (caixa + check via clip-path) cobre
+ * os dois estados de forma consistente, escopado só ao admin.
+ */
+[data-admin-theme] input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-content: center;
+  border-radius: 0.25rem;
+  border: 1px solid var(--admin-border-strong);
+  background-color: var(--admin-bg);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+[data-admin-theme] input[type="checkbox"]::before {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  transform: scale(0);
+  transition: transform 100ms ease-in-out;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  background-color: white;
+}
+
+[data-admin-theme] input[type="checkbox"]:checked {
+  background-color: var(--admin-green);
+  border-color: var(--admin-green);
+}
+
+[data-admin-theme] input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+[data-admin-theme] input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-admin-theme] input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 2px;
 }

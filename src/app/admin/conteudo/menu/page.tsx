@@ -24,13 +24,13 @@ export default async function AdminMenuPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-ink">Menu</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Menu</h1>
+      <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
         Estrutura do menu de categorias exibido no topo do site. Itens do tipo &quot;Categoria&quot; geram o
         link automaticamente a partir da categoria vinculada — nunca digite a URL à mão para esses.
       </p>
 
-      <div className="mt-6 rounded-md border border-zinc-200 bg-white p-6">
+      <div className="mt-6 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6">
         <EditorMenu itensIniciais={itens} categorias={categorias ?? []} />
       </div>
 

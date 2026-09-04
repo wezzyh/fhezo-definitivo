@@ -42,30 +42,34 @@ export function HistoricoConteudo({ versoes, onRestaurar, abertoPorPadrao = fals
   }
 
   return (
-    <div className="mt-6 border-t border-zinc-200 pt-4">
+    <div className="mt-6 border-t border-[var(--admin-border)] pt-4">
       <button
         type="button"
         onClick={() => setAberto((valor) => !valor)}
-        className="text-sm font-medium text-brand-green hover:underline"
+        className="text-sm font-medium text-[var(--admin-green-text)] hover:underline"
       >
         {aberto ? "Ocultar histórico" : "Ver histórico"}
       </button>
 
       {aberto && (
         <div className="mt-3 space-y-2">
-          {versoes.length === 0 && <p className="text-sm text-muted">Nenhuma versão registrada ainda.</p>}
+          {versoes.length === 0 && (
+            <p className="text-sm text-[var(--admin-text-secondary)]">Nenhuma versão registrada ainda.</p>
+          )}
           {versoes.map((versao) => (
             <div
               key={versao.versao}
-              className="flex flex-wrap items-center gap-3 rounded-md border border-zinc-200 bg-white p-2 text-sm"
+              className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2 text-sm"
             >
-              <span className="font-medium text-ink">Versão {versao.versao}</span>
+              <span className="font-medium text-[var(--admin-text)]">Versão {versao.versao}</span>
               {versao.publicado && (
-                <span className="rounded-full bg-brand-green/10 px-2 py-0.5 text-xs font-medium text-brand-green-dark">
+                <span className="rounded-full bg-[var(--admin-green)]/15 px-2 py-0.5 text-xs font-medium text-[var(--admin-green-text)]">
                   Publicada
                 </span>
               )}
-              <span className="text-muted">{new Date(versao.created_at).toLocaleString("pt-BR")}</span>
+              <span className="text-[var(--admin-text-secondary)]">
+                {new Date(versao.created_at).toLocaleString("pt-BR")}
+              </span>
               {!versao.publicado && (
                 <Button
                   type="button"
@@ -79,7 +83,7 @@ export function HistoricoConteudo({ versoes, onRestaurar, abertoPorPadrao = fals
               )}
             </div>
           ))}
-          {mensagem && <p className="text-sm text-muted">{mensagem}</p>}
+          {mensagem && <p className="text-sm text-[var(--admin-text-secondary)]">{mensagem}</p>}
         </div>
       )}
     </div>

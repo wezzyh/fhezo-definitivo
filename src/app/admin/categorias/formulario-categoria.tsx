@@ -4,6 +4,7 @@ import { useActionState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao, descendentesDe } from "@/lib/categorias/hierarquia";
 import type { EstadoFormularioCategoria } from "./actions";
 import type { Categoria } from "@/types/database";
@@ -22,6 +23,7 @@ const estadoInicial: EstadoFormularioCategoria = {};
 
 export function FormularioCategoria({ categoria, categorias, action, textoBotao }: FormularioCategoriaProps) {
   const [estado, formAction, pendente] = useActionState(action, estadoInicial);
+  const fecharModal = useFecharModalDeRota();
 
   // Ao editar, uma categoria não pode virar mãe dela mesma nem de uma das
   // suas próprias subcategorias (formaria um ciclo) — essas opções somem
@@ -34,14 +36,14 @@ export function FormularioCategoria({ categoria, categorias, action, textoBotao 
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="nome" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="nome" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Nome *
         </label>
         <Input id="nome" name="nome" defaultValue={categoria?.nome} required />
       </div>
 
       <div>
-        <label htmlFor="categoria_pai_id" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="categoria_pai_id" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Categoria-mãe
         </label>
         <Select
@@ -56,7 +58,7 @@ export function FormularioCategoria({ categoria, categorias, action, textoBotao 
             </option>
           ))}
         </Select>
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
           Ex.: para criar &quot;Rolamentos Rígidos&quot; dentro de &quot;Rolamentos&quot;, escolha
           &quot;Rolamentos&quot; aqui.
         </p>
@@ -68,18 +70,25 @@ export function FormularioCategoria({ categoria, categorias, action, textoBotao 
           name="ativo"
           type="checkbox"
           defaultChecked={categoria ? categoria.ativo : true}
-          className="h-4 w-4 rounded border-zinc-300"
+          className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
         />
-        <label htmlFor="ativo" className="text-sm font-medium text-ink">
+        <label htmlFor="ativo" className="text-sm font-medium text-[var(--admin-text)]">
           Categoria ativa (disponível para seleção em produtos)
         </label>
       </div>
 
-      {estado.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
+      {estado.erro && <p className="text-sm text-[var(--admin-danger)]">{estado.erro}</p>}
 
-      <Button type="submit" variant="primary" disabled={pendente}>
-        {pendente ? "Salvando..." : textoBotao}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button type="submit" variant="primary" disabled={pendente}>
+          {pendente ? "Salvando..." : textoBotao}
+        </Button>
+        {fecharModal && (
+          <Button type="button" variant="ghost" onClick={fecharModal} disabled={pendente}>
+            Cancelar
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

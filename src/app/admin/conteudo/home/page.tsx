@@ -30,8 +30,8 @@ export default async function AdminHomePage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-ink">Home</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Home</h1>
+      <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
         Seções exibidas na página inicial do site, na ordem em que aparecem aqui.
       </p>
 

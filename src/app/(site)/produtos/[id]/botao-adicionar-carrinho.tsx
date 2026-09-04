@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ShoppingCartSimple, Minus, Plus } from "@phosphor-icons/react";
 import { useCarrinho } from "@/lib/carrinho/contexto";
 
 interface BotaoAdicionarCarrinhoProps {
@@ -22,7 +22,7 @@ export function BotaoAdicionarCarrinho(props: BotaoAdicionarCarrinhoProps) {
   const [adicionado, setAdicionado] = useState(false);
 
   if (props.estoque <= 0) {
-    return <p className="text-sm font-medium text-muted">Produto sem estoque no momento.</p>;
+    return <p className="text-sm font-medium text-ink-500">Produto sem estoque no momento.</p>;
   }
 
   function lidarComClique() {
@@ -37,24 +37,35 @@ export function BotaoAdicionarCarrinho(props: BotaoAdicionarCarrinhoProps) {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <label htmlFor="quantidade" className="sr-only">
-        Quantidade
-      </label>
-      <input
-        id="quantidade"
-        type="number"
-        min={1}
-        max={props.estoque}
-        value={quantidade}
-        onChange={(evento) =>
-          setQuantidade(Math.min(Math.max(1, Number(evento.target.value)), props.estoque))
-        }
-        className="w-16 rounded-md border border-zinc-300 px-2 py-2 text-center text-sm text-ink outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green"
-      />
-      <Button type="button" variant="primary" onClick={lidarComClique}>
-        {adicionado ? "Adicionado!" : "Adicionar ao carrinho"}
-      </Button>
+    <div className="grid gap-4 sm:grid-cols-[190px_minmax(0,1fr)]">
+      <div className="flex h-[54px] items-center rounded-fhezo border border-ink-300 bg-white">
+        <button
+          type="button"
+          onClick={() => setQuantidade((valor) => Math.max(1, valor - 1))}
+          className="flex h-full w-14 items-center justify-center text-fhezo-600"
+          aria-label="Diminuir quantidade"
+        >
+          <Minus size={19} />
+        </button>
+        <span className="flex-1 text-center font-display text-lg font-semibold">{quantidade}</span>
+        <button
+          type="button"
+          onClick={() => setQuantidade((valor) => Math.min(valor + 1, props.estoque))}
+          className="flex h-full w-14 items-center justify-center text-fhezo-600"
+          aria-label="Aumentar quantidade"
+        >
+          <Plus size={19} />
+        </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={lidarComClique}
+        className="flex h-[54px] items-center justify-center gap-3 rounded-fhezo bg-fhezo-600 px-5 font-display text-[16px] font-semibold text-white transition hover:bg-fhezo-700"
+      >
+        <ShoppingCartSimple size={22} weight="bold" />
+        {adicionado ? "Adicionado!" : "Adicionar ao Carrinho"}
+      </button>
     </div>
   );
 }

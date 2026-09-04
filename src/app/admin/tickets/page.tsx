@@ -65,7 +65,7 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Tickets de suporte</h1>
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Tickets de suporte</h1>
         <Link href="/admin/tickets/novo">
           <Button variant="primary">+ Novo ticket</Button>
         </Link>
@@ -77,8 +77,8 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
             href={construirHrefFiltro({ status: null, prioridade: prioridadeFiltro })}
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
               !statusFiltro
-                ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-                : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+                ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-text)]"
             }`}
           >
             Todos os status
@@ -89,8 +89,8 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
               href={construirHrefFiltro({ status, prioridade: prioridadeFiltro })}
               className={`rounded-full border px-3 py-1 text-xs font-medium ${
                 statusFiltro === status
-                  ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-                  : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+                  ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                  : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-text)]"
               }`}
             >
               {TEXTO_STATUS_TICKET[status]}
@@ -98,15 +98,15 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
           ))}
         </div>
 
-        <span className="text-zinc-300">|</span>
+        <span className="text-[var(--admin-border-strong)]">|</span>
 
         <div className="flex flex-wrap gap-2">
           <Link
             href={construirHrefFiltro({ status: statusFiltro, prioridade: null })}
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
               !prioridadeFiltro
-                ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-                : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+                ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-text)]"
             }`}
           >
             Todas as prioridades
@@ -117,8 +117,8 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
               href={construirHrefFiltro({ status: statusFiltro, prioridade })}
               className={`rounded-full border px-3 py-1 text-xs font-medium ${
                 prioridadeFiltro === prioridade
-                  ? "border-brand-green bg-brand-green/10 text-brand-green-dark"
-                  : "border-zinc-300 text-muted hover:border-brand-green hover:text-brand-green"
+                  ? "border-[var(--admin-green)] bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]"
+                  : "border-[var(--admin-border-strong)] text-[var(--admin-text-secondary)] hover:border-[var(--admin-green)] hover:text-[var(--admin-text)]"
               }`}
             >
               {TEXTO_PRIORIDADE_TICKET[prioridade]}
@@ -127,16 +127,16 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
         </div>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">Erro ao carregar tickets: {error.message}</p>}
+      {error && <p className="mt-4 text-sm text-[var(--admin-danger)]">Erro ao carregar tickets: {error.message}</p>}
 
       {!error && (!tickets || tickets.length === 0) && (
-        <p className="mt-6 text-sm text-muted">Nenhum ticket encontrado com esses filtros.</p>
+        <p className="mt-6 text-sm text-[var(--admin-text-secondary)]">Nenhum ticket encontrado com esses filtros.</p>
       )}
 
       {tickets && tickets.length > 0 && (
-        <div className="mt-6 overflow-x-auto rounded-md border border-zinc-200 bg-white">
+        <div className="mt-6 overflow-x-auto rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)]">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-muted">
+            <thead className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] text-xs uppercase text-[var(--admin-text-secondary)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Assunto</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
@@ -147,13 +147,19 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
             </thead>
             <tbody>
               {tickets.map((ticket) => (
-                <tr key={ticket.id} className="border-b border-zinc-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink">
-                    <Link href={`/admin/tickets/${ticket.id}`} className="hover:text-brand-green hover:underline">
+                <tr
+                  key={ticket.id}
+                  className="border-b border-[var(--admin-border)] transition-colors duration-150 last:border-0 hover:bg-[var(--admin-surface-hover)]"
+                >
+                  <td className="px-4 py-3 font-medium text-[var(--admin-text)]">
+                    <Link
+                      href={`/admin/tickets/${ticket.id}`}
+                      className="hover:text-[var(--admin-green-text)] hover:underline"
+                    >
                       {ticket.assunto}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-muted">{ticket.cliente?.nome ?? "Não cadastrado"}</td>
+                  <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{ticket.cliente?.nome ?? "Não cadastrado"}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${classesBadgePrioridadeTicket(ticket.prioridade)}`}
@@ -168,7 +174,7 @@ export default async function AdminTicketsPage({ searchParams }: AdminTicketsPag
                       {TEXTO_STATUS_TICKET[ticket.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted">{new Date(ticket.created_at).toLocaleString("pt-BR")}</td>
+                  <td className="px-4 py-3 text-[var(--admin-text-secondary)]">{new Date(ticket.created_at).toLocaleString("pt-BR")}</td>
                 </tr>
               ))}
             </tbody>

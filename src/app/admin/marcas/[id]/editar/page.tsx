@@ -28,13 +28,13 @@ export default async function EditarMarcaPage({ params }: PaginaEditarMarcaProps
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-ink">Editar marca</h1>
-        <Link href="/admin/marcas" className="text-sm font-medium text-brand-green hover:underline">
+        <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Editar marca</h1>
+        <Link href="/admin/marcas" className="text-sm font-medium text-[var(--admin-green-text)] hover:underline">
           Voltar para a lista
         </Link>
       </div>
 
-      <div className="mt-6 max-w-md rounded-md border border-zinc-200 bg-white p-6">
+      <div className="mt-6 max-w-md rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6">
         <FormularioMarca marca={marca} action={atualizarComId} textoBotao="Salvar alterações" />
       </div>
     </div>

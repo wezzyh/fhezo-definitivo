@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import { criarMarcaRapida } from "../marcas/actions";
 import { criarCategoriaRapida } from "../categorias/actions";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao } from "@/lib/categorias/hierarquia";
@@ -43,6 +45,7 @@ export function FormularioProduto({
   textoBotao,
 }: FormularioProdutoProps) {
   const [estado, formAction, pendente] = useActionState(action, estadoInicial);
+  const fecharModal = useFecharModalDeRota();
 
   const listaInicial = atributosParaLista(produto?.atributos);
   const [atributos, setAtributos] = useState<ParAtributo[]>(
@@ -129,13 +132,13 @@ export function FormularioProduto({
     <form action={formAction} className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="sku" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="sku" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             SKU *
           </label>
           <Input id="sku" name="sku" defaultValue={produto?.sku} required />
         </div>
         <div>
-          <label htmlFor="nome" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="nome" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Nome *
           </label>
           <Input id="nome" name="nome" defaultValue={produto?.nome} required />
@@ -143,12 +146,12 @@ export function FormularioProduto({
 
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label htmlFor="marca_id" className="block text-sm font-medium text-ink">
+            <label htmlFor="marca_id" className="block text-sm font-medium text-[var(--admin-text)]">
               Marca *
             </label>
             <button
               type="button"
-              className="text-xs font-medium text-brand-green hover:underline"
+              className="text-xs font-medium text-[var(--admin-green-text)] hover:underline"
               onClick={() => setMostrandoNovaMarca((atual) => !atual)}
             >
               {mostrandoNovaMarca ? "Cancelar" : "+ nova marca"}
@@ -185,17 +188,17 @@ export function FormularioProduto({
               </Button>
             </div>
           )}
-          {erroNovaMarca && <p className="mt-1 text-xs text-red-600">{erroNovaMarca}</p>}
+          {erroNovaMarca && <p className="mt-1 text-xs text-[var(--admin-danger)]">{erroNovaMarca}</p>}
         </div>
 
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label htmlFor="categoria_id" className="block text-sm font-medium text-ink">
+            <label htmlFor="categoria_id" className="block text-sm font-medium text-[var(--admin-text)]">
               Categoria *
             </label>
             <button
               type="button"
-              className="text-xs font-medium text-brand-green hover:underline"
+              className="text-xs font-medium text-[var(--admin-green-text)] hover:underline"
               onClick={() => setMostrandoNovaCategoria((atual) => !atual)}
             >
               {mostrandoNovaCategoria ? "Cancelar" : "+ nova categoria"}
@@ -218,7 +221,7 @@ export function FormularioProduto({
               </option>
             ))}
           </Select>
-          <p className="mt-1 text-xs text-muted">
+          <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
             Para escolher uma categoria-mãe (hierarquia), use{" "}
             <a href="/admin/categorias" className="underline">
               Categorias
@@ -244,11 +247,11 @@ export function FormularioProduto({
               </Button>
             </div>
           )}
-          {erroNovaCategoria && <p className="mt-1 text-xs text-red-600">{erroNovaCategoria}</p>}
+          {erroNovaCategoria && <p className="mt-1 text-xs text-[var(--admin-danger)]">{erroNovaCategoria}</p>}
         </div>
 
         <div>
-          <label htmlFor="preco" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="preco" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Preço (R$) *
           </label>
           <Input
@@ -262,7 +265,21 @@ export function FormularioProduto({
           />
         </div>
         <div>
-          <label htmlFor="estoque" className="mb-1 block text-sm font-medium text-ink">
+          <label htmlFor="preco_de" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
+            Preço &quot;de&quot; (riscado, opcional)
+          </label>
+          <Input
+            id="preco_de"
+            name="preco_de"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={produto?.preco_de ?? ""}
+            placeholder="Deixe vazio para não mostrar desconto"
+          />
+        </div>
+        <div>
+          <label htmlFor="estoque" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
             Estoque *
           </label>
           <Input
@@ -281,19 +298,19 @@ export function FormularioProduto({
             name="ativo"
             type="checkbox"
             defaultChecked={produto ? produto.ativo : true}
-            className="h-4 w-4 rounded border-zinc-300"
+            className="h-4 w-4 rounded border-[var(--admin-border-strong)]"
           />
-          <label htmlFor="ativo" className="text-sm font-medium text-ink">
+          <label htmlFor="ativo" className="text-sm font-medium text-[var(--admin-text)]">
             Produto ativo (visível na loja)
           </label>
         </div>
       </div>
 
       <div>
-        <p className="text-sm font-medium text-ink">Peso e dimensões (usados no cálculo de frete)</p>
+        <p className="text-sm font-medium text-[var(--admin-text)]">Peso e dimensões (usados no cálculo de frete)</p>
         <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <label htmlFor="peso_kg" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="peso_kg" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Peso (kg) *
             </label>
             <Input
@@ -307,7 +324,7 @@ export function FormularioProduto({
             />
           </div>
           <div>
-            <label htmlFor="altura_cm" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="altura_cm" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Altura (cm) *
             </label>
             <Input
@@ -321,7 +338,7 @@ export function FormularioProduto({
             />
           </div>
           <div>
-            <label htmlFor="largura_cm" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="largura_cm" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Largura (cm) *
             </label>
             <Input
@@ -335,7 +352,7 @@ export function FormularioProduto({
             />
           </div>
           <div>
-            <label htmlFor="comprimento_cm" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="comprimento_cm" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Comprimento (cm) *
             </label>
             <Input
@@ -352,16 +369,16 @@ export function FormularioProduto({
       </div>
 
       <div>
-        <p className="text-sm font-medium text-ink">Identificação fiscal (opcional)</p>
+        <p className="text-sm font-medium text-[var(--admin-text)]">Identificação fiscal (opcional)</p>
         <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="ean" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="ean" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               EAN (código de barras)
             </label>
             <Input id="ean" name="ean" defaultValue={produto?.ean ?? ""} />
           </div>
           <div>
-            <label htmlFor="ncm" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="ncm" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               NCM
             </label>
             <Input id="ncm" name="ncm" defaultValue={produto?.ncm ?? ""} />
@@ -370,7 +387,7 @@ export function FormularioProduto({
       </div>
 
       <div>
-        <label htmlFor="imagem_url" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="imagem_url" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Imagem principal (URL)
         </label>
         <Input
@@ -380,29 +397,23 @@ export function FormularioProduto({
           placeholder="https://..."
           defaultValue={produto?.imagem_url ?? ""}
         />
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
           Ainda não há upload de arquivo — cole a URL de uma imagem já hospedada.
         </p>
       </div>
 
       <div>
-        <label htmlFor="descricao" className="mb-1 block text-sm font-medium text-ink">
+        <label htmlFor="descricao" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
           Descrição
         </label>
-        <textarea
-          id="descricao"
-          name="descricao"
-          defaultValue={produto?.descricao ?? ""}
-          rows={4}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-ink outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green"
-        />
+        <Textarea id="descricao" name="descricao" defaultValue={produto?.descricao ?? ""} rows={4} />
       </div>
 
       <div>
-        <p className="text-sm font-medium text-ink">SEO (opcional)</p>
+        <p className="text-sm font-medium text-[var(--admin-text)]">SEO (opcional)</p>
         <div className="mt-2 space-y-3">
           <div>
-            <label htmlFor="seo_titulo" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="seo_titulo" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Título SEO
             </label>
             <Input
@@ -413,28 +424,22 @@ export function FormularioProduto({
             />
           </div>
           <div>
-            <label htmlFor="seo_descricao" className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="seo_descricao" className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
               Meta descrição SEO
             </label>
-            <textarea
-              id="seo_descricao"
-              name="seo_descricao"
-              defaultValue={produto?.seo_descricao ?? ""}
-              rows={2}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-ink outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green"
-            />
+            <Textarea id="seo_descricao" name="seo_descricao" defaultValue={produto?.seo_descricao ?? ""} rows={2} />
           </div>
         </div>
       </div>
 
       <div>
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-ink">Atributos técnicos</label>
+          <label className="block text-sm font-medium text-[var(--admin-text)]">Atributos técnicos</label>
           <Button type="button" variant="outline" onClick={adicionarAtributo}>
             + Adicionar atributo
           </Button>
         </div>
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
           Ex.: chave &quot;diametro_interno_mm&quot;, valor &quot;20&quot;.
         </p>
 
@@ -463,11 +468,18 @@ export function FormularioProduto({
         </div>
       </div>
 
-      {estado.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
+      {estado.erro && <p className="text-sm text-[var(--admin-danger)]">{estado.erro}</p>}
 
-      <Button type="submit" variant="primary" disabled={pendente}>
-        {pendente ? "Salvando..." : textoBotao}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button type="submit" variant="primary" disabled={pendente}>
+          {pendente ? "Salvando..." : textoBotao}
+        </Button>
+        {fecharModal && (
+          <Button type="button" variant="ghost" onClick={fecharModal} disabled={pendente}>
+            Cancelar
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

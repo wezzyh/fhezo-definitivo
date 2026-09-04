@@ -104,10 +104,12 @@ export function faixaQualidade(score: number): FaixaQualidade {
   return "baixa";
 }
 
-/** Classes Tailwind (paleta do projeto — sem cor nova) para o badge de qualidade. */
+// Só usado em /admin/produtos — referencia os tokens --admin-* direto
+// (sem o fallback var(--admin-x, --color-y) que componentes compartilhados
+// com o site público precisam, ver src/components/ui/button.tsx).
 export function classesBadgeQualidade(score: number): string {
   const faixa = faixaQualidade(score);
-  if (faixa === "alta") return "bg-brand-green/10 text-brand-green-dark";
-  if (faixa === "media") return "bg-warning/15 text-dark-2";
-  return "bg-red-100 text-red-800";
+  if (faixa === "alta") return "bg-[var(--admin-green)]/15 text-[var(--admin-green-text)]";
+  if (faixa === "media") return "bg-[var(--admin-warning)]/15 text-[var(--admin-warning)]";
+  return "bg-[var(--admin-danger)]/15 text-[var(--admin-danger)]";
 }
