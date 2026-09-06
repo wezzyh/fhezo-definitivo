@@ -1,17 +1,46 @@
 "use client";
 
-import { CaretDown, Cube, Heart, SignOut, UserCircle } from "@phosphor-icons/react";
+import { CaretDown, Cube, SignOut, UserCircle } from "@phosphor-icons/react";
 import { useState } from "react";
 import Link from "next/link";
+import { sairCliente } from "@/app/(site)/conta/actions";
 
-// Copiado literalmente de
-// referencia-novo-frontend/src/components/account/AccountMenu.tsx
-// (Link do react-router-dom trocado por next/link). Não há sistema de
-// login de cliente no projeto (autenticação fica fora de escopo desta
-// integração) — mantido exatamente como na referência: um menu decorativo
-// de "visitante", sem estado real de sessão.
-export function MenuConta() {
+interface MenuContaProps {
+  /** null = ninguém logado. Ver src/lib/clientes/sessao.ts. */
+  cliente: { primeiroNome: string } | null;
+}
+
+// Baseado visualmente em
+// referencia-novo-frontend/src/components/account/AccountMenu.tsx (Link
+// do react-router-dom trocado por next/link), mas agora conectado à sessão
+// real de cliente (ver obterClienteLogado, passado pelo Header) em vez do
+// estado decorativo de "visitante" fixo da referência. Deslogado: vira um
+// link direto pra /login (sem dropdown — não há nada de sessão pra
+// mostrar). "Meus desejos" da referência foi removido: não existe recurso
+// de lista de desejos no projeto, manter o botão seria um item morto.
+export function MenuConta({ cliente }: MenuContaProps) {
   const [open, setOpen] = useState(false);
+
+  if (!cliente) {
+    return (
+      <Link
+        href="/login"
+        className="
+          flex items-center gap-2
+          text-white
+          focus-fhezo
+        "
+      >
+        <UserCircle size={29} weight="regular" />
+
+        <div className="hidden xl:block text-left leading-tight">
+          <span className="block text-[12px] text-ink-300">Olá, visitante</span>
+
+          <span className="font-semibold text-[14px]">Entrar</span>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <div className="relative">
@@ -26,7 +55,7 @@ export function MenuConta() {
         <UserCircle size={29} weight="regular" />
 
         <div className="hidden xl:block text-left leading-tight">
-          <span className="block text-[12px] text-ink-300">Olá, visitante</span>
+          <span className="block text-[12px] text-ink-300">Olá, {cliente.primeiroNome}</span>
 
           <span className="font-semibold text-[14px]">Minha conta</span>
         </div>
@@ -48,13 +77,14 @@ export function MenuConta() {
         >
           <div className="border-b border-ink-200 px-5 py-4">
             <p className="text-base text-ink-700">
-              Olá, <strong>Visitante</strong>
+              Olá, <strong>{cliente.primeiroNome}</strong>
             </p>
           </div>
 
           <div className="p-3">
             <Link
               href="/conta"
+              onClick={() => setOpen(false)}
               className="
                 flex items-center gap-4
                 rounded-fhezo
@@ -68,9 +98,11 @@ export function MenuConta() {
               Minha Conta
             </Link>
 
-            <button
+            <Link
+              href="/conta#pedidos"
+              onClick={() => setOpen(false)}
               className="
-                flex w-full items-center gap-4
+                flex items-center gap-4
                 rounded-fhezo
                 px-3 py-3
                 text-sm text-ink-700
@@ -80,38 +112,26 @@ export function MenuConta() {
             >
               <Cube size={22} />
               Meus Pedidos
-            </button>
-
-            <button
-              className="
-                flex w-full items-center gap-4
-                rounded-fhezo
-                px-3 py-3
-                text-sm text-ink-700
-                transition
-                hover:bg-warm-100
-              "
-            >
-              <Heart size={22} />
-              Meus desejos
-            </button>
+            </Link>
           </div>
 
           <div className="border-t border-ink-200 p-3">
-            <button
-              onClick={() => setOpen(false)}
-              className="
-                flex w-full items-center gap-4
-                rounded-fhezo
-                px-3 py-3
-                text-sm text-ink-700
-                transition
-                hover:bg-warm-100
-              "
-            >
-              <SignOut size={22} />
-              Sair
-            </button>
+            <form action={sairCliente}>
+              <button
+                type="submit"
+                className="
+                  flex w-full items-center gap-4
+                  rounded-fhezo
+                  px-3 py-3
+                  text-sm text-ink-700
+                  transition
+                  hover:bg-warm-100
+                "
+              >
+                <SignOut size={22} />
+                Sair
+              </button>
+            </form>
           </div>
         </div>
       )}

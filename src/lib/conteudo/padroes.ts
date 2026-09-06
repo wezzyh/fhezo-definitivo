@@ -1,4 +1,4 @@
-import type { DadosMenu, DadosHome, DadosTema } from "./tipos";
+import type { DadosMenu, DadosHome, DadosTema, DadosFooter } from "./tipos";
 
 // Conteúdo padrão usado em dois casos: (1) fallback em runtime se a tabela
 // conteudo_site ainda não tiver nenhuma versão publicada de um tipo (ex.:
@@ -34,6 +34,15 @@ export const HOME_PADRAO: DadosHome = {
       ativo: true,
     },
   ],
+};
+
+// Diferente de menu/home/tema, "footer" não tinha nada hardcoded pra
+// migrar (é a primeira vez que essas imagens existem no site) — só usado
+// como fallback enquanto o admin não publica nenhuma versão. O footer
+// público trata as duas listas vazias como estado normal, sem quebrar.
+export const FOOTER_PADRAO: DadosFooter = {
+  formas_pagamento: [],
+  selos_seguranca: [],
 };
 
 export const TEMA_PADRAO: DadosTema = {

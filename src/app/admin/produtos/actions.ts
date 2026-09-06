@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import { existeSkuDuplicado, existeEanDuplicado } from "@/lib/produtos/duplicatas";
+import { removerImagemAdminSeOrfa } from "@/components/admin/upload-imagem-actions";
 
 export interface EstadoFormularioProduto {
   erro?: string;
@@ -208,6 +209,7 @@ export async function atualizarProduto(
       categoria_id: dados.categoria_id,
       descricao: dados.descricao,
       preco: dados.preco,
+      preco_de: dados.preco_de,
       estoque: dados.estoque,
       ativo: dados.ativo,
       peso_kg: dados.peso_kg,
@@ -226,6 +228,12 @@ export async function atualizarProduto(
   if (error) {
     return { erro: `Erro ao atualizar produto: ${error.message}` };
   }
+
+  // Produto não é versionado (diferente de banner) — a imagem antiga, se
+  // trocada, não é mais referenciada por nada, então dá pra limpar do
+  // Storage com segurança. Melhor esforço: nunca bloqueia o salvamento.
+  const imagemAnterior = String(formData.get("imagem_url_anterior") ?? "").trim() || null;
+  await removerImagemAdminSeOrfa(imagemAnterior, dados.imagem_url);
 
   revalidatePath("/admin/produtos");
   revalidatePath(`/produtos/${id}`);

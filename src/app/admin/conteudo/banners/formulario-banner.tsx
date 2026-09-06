@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UploadImagem } from "@/components/admin/upload-imagem";
 import type { EstadoFormularioBanner } from "./actions";
 import type { Banner } from "@/types/database";
 import type { DadosBanner } from "@/lib/conteudo/tipos";
@@ -21,12 +22,13 @@ export function FormularioBanner({ banner, action, textoBotao }: FormularioBanne
 
   return (
     <form action={formAction} className="space-y-4">
-      <div>
-        <label htmlFor="imagem_url" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
-          URL da imagem *
-        </label>
-        <Input id="imagem_url" name="imagem_url" defaultValue={dados?.imagem_url} required placeholder="https://..." />
-      </div>
+      <UploadImagem
+        name="imagem_url"
+        valorInicial={dados?.imagem_url ?? null}
+        pasta="banners"
+        label="Imagem do banner"
+        obrigatorio
+      />
 
       <div>
         <label htmlFor="link_url" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">

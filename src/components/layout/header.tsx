@@ -10,6 +10,8 @@ import {
 } from "@phosphor-icons/react/ssr";
 import Link from "next/link";
 import { obterArvoreCategoriasPublica } from "@/lib/conteudo/consultas";
+import { obterClienteLogado } from "@/lib/clientes/sessao";
+import { CONTATO_FIXO } from "@/lib/conteudo/contato-fixo";
 import { BarraPromocional } from "./barra-promocional";
 import { MenuConta } from "@/components/account/menu-conta";
 import { MegaMenuDepartamentos } from "@/components/navigation/mega-menu-departamentos";
@@ -25,7 +27,8 @@ import { IndicadorCarrinho } from "./indicador-carrinho";
 // - Busca: continua um <form action="/produtos" method="get"> real (sem
 //   lógica nova), só restilizado com as classes escuras da referência.
 export async function Header() {
-  const arvoreCategorias = await obterArvoreCategoriasPublica();
+  const [arvoreCategorias, logado] = await Promise.all([obterArvoreCategoriasPublica(), obterClienteLogado()]);
+  const clienteMenu = logado?.cliente ? { primeiroNome: logado.cliente.nome.split(" ")[0] } : null;
 
   return (
     <header className="relative z-50">
@@ -59,7 +62,7 @@ export async function Header() {
               </a>
 
               <a
-                href="tel:+55419935156006"
+                href={`tel:${CONTATO_FIXO.telefoneTel}`}
                 className="
                   flex items-center gap-2
                   font-semibold
@@ -67,11 +70,11 @@ export async function Header() {
                 "
               >
                 <Phone size={18} className="text-fhezo-400" />
-                (51) 99351-56006
+                {CONTATO_FIXO.telefoneExibicao}
               </a>
 
               <a
-                href="mailto:sac@fhezo.com.br"
+                href={`mailto:${CONTATO_FIXO.email}`}
                 className="
                   flex items-center gap-2
                   font-semibold
@@ -79,7 +82,7 @@ export async function Header() {
                 "
               >
                 <EnvelopeSimple size={18} className="text-fhezo-400" />
-                sac@fhezo.com.br
+                {CONTATO_FIXO.email}
               </a>
             </div>
 
@@ -161,7 +164,7 @@ export async function Header() {
             </form>
 
             <div className="flex shrink-0 items-center gap-5">
-              <MenuConta />
+              <MenuConta cliente={clienteMenu} />
 
               <IndicadorCarrinho />
             </div>

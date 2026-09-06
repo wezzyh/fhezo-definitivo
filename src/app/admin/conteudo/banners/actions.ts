@@ -10,6 +10,14 @@ export interface EstadoFormularioBanner {
   erro?: string;
 }
 
+// Diferente de produtos, banners são versionados (cada publicação vira uma
+// linha nova e imutável, histórico nunca é apagado — ver HANDOFF.md). Por
+// isso, ao trocar a imagem de um banner, a imagem antiga NÃO é removida do
+// Storage aqui: versões antigas em /admin/conteudo/banners/[id]/historico
+// continuam apontando pra ela, e apagar quebraria essas imagens no
+// histórico. O componente UploadImagem sempre publica um campo oculto
+// "imagem_url_anterior", mas esta action deliberadamente não o lê.
+
 function validarDadosBanner(formData: FormData): DadosBanner | { erro: string } {
   const imagem_url = String(formData.get("imagem_url") ?? "").trim();
   if (!imagem_url) return { erro: "A URL da imagem é obrigatória." };

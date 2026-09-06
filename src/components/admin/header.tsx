@@ -18,6 +18,7 @@ const TITULOS_POR_ROTA: { prefixo: string; titulo: string; grupo?: string }[] = 
   { prefixo: "/admin/conteudo/menu", titulo: "Menu", grupo: "Conteúdo" },
   { prefixo: "/admin/conteudo/home", titulo: "Home", grupo: "Conteúdo" },
   { prefixo: "/admin/conteudo/tema", titulo: "Tema", grupo: "Conteúdo" },
+  { prefixo: "/admin/conteudo/footer", titulo: "Footer", grupo: "Conteúdo" },
   { prefixo: "/admin/integracao", titulo: "Status das integrações", grupo: "Integrações" },
   { prefixo: "/admin/eventos", titulo: "Eventos de integração", grupo: "Integrações" },
   { prefixo: "/admin/login", titulo: "Login" },

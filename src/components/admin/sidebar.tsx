@@ -16,6 +16,7 @@ import {
   Menu as MenuIcon,
   Home,
   Palette,
+  PanelBottom,
   Plug,
   Activity,
   ChevronDown,
@@ -54,6 +55,7 @@ const GRUPOS_NAV: GrupoNav[] = [
       { rotulo: "Menu", href: "/admin/conteudo/menu", icon: MenuIcon },
       { rotulo: "Home", href: "/admin/conteudo/home", icon: Home },
       { rotulo: "Tema", href: "/admin/conteudo/tema", icon: Palette },
+      { rotulo: "Footer", href: "/admin/conteudo/footer", icon: PanelBottom },
     ],
   },
   {

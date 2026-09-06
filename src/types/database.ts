@@ -78,6 +78,16 @@ export interface Cliente {
   documento: string;
   email: string;
   telefone: string | null;
+  /** Referência a auth.users — preenchida quando o cliente cria/vincula uma conta. null = comprou só como convidado, sem login. */
+  auth_user_id: string | null;
+  /** Endereço padrão do cliente, editável em /conta — independente do snapshot gravado em cada pedido (pedidos.endereco_*). */
+  endereco_cep: string | null;
+  endereco_rua: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  endereco_cidade: string | null;
+  endereco_uf: string | null;
   created_at: string;
 }
 
@@ -220,7 +230,7 @@ export interface Integracao {
   updated_at: string;
 }
 
-export type TipoConteudoSite = "menu" | "home" | "tema";
+export type TipoConteudoSite = "menu" | "home" | "tema" | "footer";
 
 /**
  * Conteúdo do site versionado (menu, home, tema), editável pelo admin sem

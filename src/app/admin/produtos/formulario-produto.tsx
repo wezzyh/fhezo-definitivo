@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
+import { UploadImagem } from "@/components/admin/upload-imagem";
 import { criarMarcaRapida } from "../marcas/actions";
 import { criarCategoriaRapida } from "../categorias/actions";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao } from "@/lib/categorias/hierarquia";
@@ -386,21 +387,7 @@ export function FormularioProduto({
         </div>
       </div>
 
-      <div>
-        <label htmlFor="imagem_url" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
-          Imagem principal (URL)
-        </label>
-        <Input
-          id="imagem_url"
-          name="imagem_url"
-          type="url"
-          placeholder="https://..."
-          defaultValue={produto?.imagem_url ?? ""}
-        />
-        <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
-          Ainda não há upload de arquivo — cole a URL de uma imagem já hospedada.
-        </p>
-      </div>
+      <UploadImagem name="imagem_url" valorInicial={produto?.imagem_url ?? null} pasta="produtos" label="Imagem principal" />
 
       <div>
         <label htmlFor="descricao" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">

@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { criarClienteSupabasePublico } from "@/lib/supabase/publico";
 import type { ConteudoSite, TipoConteudoSite, Banner } from "@/types/database";
-import type { DadosMenu, DadosHome, DadosTema, DadosBanner } from "./tipos";
-import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO } from "./padroes";
+import type { DadosMenu, DadosHome, DadosTema, DadosBanner, DadosFooter } from "./tipos";
+import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO, FOOTER_PADRAO } from "./padroes";
 
 // Leituras públicas (site) de conteúdo versionado — sempre a versão mais
 // recente com publicado=true de cada tipo, nunca o histórico. Cacheadas
@@ -57,6 +57,15 @@ export const obterTemaPublicado = unstable_cache(
   },
   ["conteudo-site-tema"],
   { tags: ["conteudo-tema"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+export const obterFooterPublicado = unstable_cache(
+  async (): Promise<DadosFooter> => {
+    const conteudo = await buscarPublicado("footer");
+    return (conteudo?.dados as DadosFooter | undefined) ?? FOOTER_PADRAO;
+  },
+  ["conteudo-site-footer"],
+  { tags: ["conteudo-footer"], revalidate: REVALIDATE_SEGUNDOS },
 );
 
 export const obterBannersPublicados = unstable_cache(
