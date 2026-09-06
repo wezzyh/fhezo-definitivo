@@ -84,6 +84,61 @@ export const obterMapaSlugsCategorias = unstable_cache(
   { tags: ["categorias"], revalidate: REVALIDATE_SEGUNDOS },
 );
 
+export interface DepartamentoPublico {
+  id: string;
+  label: string;
+  href: string;
+  children?: DepartamentoPublico[];
+}
+
+/**
+ * Árvore de categorias ativas (via categoria_pai_id, até 3 níveis: topo →
+ * subcategoria → neta) no formato consumido pelo mega menu do header
+ * (src/components/navigation/mega-menu-departamentos.tsx). Cada nó vira um
+ * link para "/produtos?categoria=<slug>" (mesmo filtro exato-por-categoria
+ * já usado em /produtos, sem incluir descendentes).
+ */
+export const obterArvoreCategoriasPublica = unstable_cache(
+  async (): Promise<DepartamentoPublico[]> => {
+    const supabase = criarClienteSupabasePublico();
+    const { data } = await supabase
+      .from("categorias")
+      .select("id, nome, slug, categoria_pai_id")
+      .eq("ativo", true)
+      .returns<{ id: string; nome: string; slug: string; categoria_pai_id: string | null }[]>();
+
+    const categorias = data ?? [];
+    const filhosPorPai = new Map<string | null, typeof categorias>();
+    for (const categoria of categorias) {
+      const lista = filhosPorPai.get(categoria.categoria_pai_id);
+      if (lista) {
+        lista.push(categoria);
+      } else {
+        filhosPorPai.set(categoria.categoria_pai_id, [categoria]);
+      }
+    }
+    for (const lista of filhosPorPai.values()) {
+      lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    }
+
+    function montar(paiId: string | null): DepartamentoPublico[] {
+      return (filhosPorPai.get(paiId) ?? []).map((categoria) => {
+        const filhos = montar(categoria.id);
+        return {
+          id: categoria.id,
+          label: categoria.nome,
+          href: `/produtos?categoria=${categoria.slug}`,
+          ...(filhos.length > 0 ? { children: filhos } : {}),
+        };
+      });
+    }
+
+    return montar(null);
+  },
+  ["categorias-arvore-publica"],
+  { tags: ["categorias"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
 /**
  * Filtra banners publicados para o que deve aparecer AGORA: ativo=true e
  * dentro da janela de vigência (data_inicio/data_fim). Deliberadamente FORA

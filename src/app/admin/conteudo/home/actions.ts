@@ -7,7 +7,6 @@ import type { ConteudoSite } from "@/types/database";
 
 function validarSecoes(secoes: DadosHome["secoes"]): string | null {
   for (const secao of secoes) {
-    if (secao.tipo === "hero" && !secao.titulo.trim()) return "O destaque principal precisa de um título.";
     if (secao.tipo === "categorias_destaque" && secao.categoria_ids.length === 0) {
       return `Selecione ao menos uma categoria em "${secao.titulo || "Categorias em destaque"}".`;
     }

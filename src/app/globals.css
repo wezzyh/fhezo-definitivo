@@ -87,6 +87,103 @@ body {
 }
 
 /*
+ * Utilitários literais copiados de referencia-novo-frontend/src/index.css —
+ * mantidos com os mesmos nomes de classe usados no JSX copiado ali (Header,
+ * DepartmentsMegaMenu, ProductCard, CategoriesStrip), para preservar a
+ * fidelidade visual/estrutural na integração do novo visual público.
+ */
+.fhezo-container {
+  width: min(1520px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+@media (max-width: 640px) {
+  .fhezo-container {
+    width: min(100% - 28px, 1520px);
+  }
+}
+
+.focus-fhezo {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fhezo-500 focus-visible:ring-offset-2;
+}
+
+.product-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes promoExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes promoEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.promo-message {
+  display: inline-block;
+  text-align: center;
+}
+
+.promo-message-enter {
+  animation: promoEnter 220ms ease-out both;
+}
+
+.promo-message-exit {
+  animation: promoExit 220ms ease-in both;
+}
+
+@keyframes departmentPanelIn {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes departmentCascadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/*
  * ---------------------------------------------------------------------
  * Design tokens do PAINEL ADMINISTRATIVO (/admin) — Fase A do redesign.
  * ---------------------------------------------------------------------

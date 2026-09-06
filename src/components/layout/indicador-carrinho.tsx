@@ -13,13 +13,13 @@ export function IndicadorCarrinho() {
     <button
       type="button"
       onClick={abrirCarrinho}
-      className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-fhezo bg-white/[.06] text-white transition hover:bg-white/[.1]"
+      className="relative flex h-[48px] w-[48px] items-center justify-center rounded-fhezo bg-white/[.055] text-white transition hover:bg-white/[.1]"
       aria-label="Abrir carrinho"
     >
-      <Basket size={24} />
+      <Basket size={25} />
 
       {quantidadeTotal > 0 && (
-        <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-fhezo-400 px-1 text-xs font-bold text-ink-950">
+        <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-fhezo-400 px-1 text-xs font-bold text-ink-950">
           {quantidadeTotal}
         </span>
       )}

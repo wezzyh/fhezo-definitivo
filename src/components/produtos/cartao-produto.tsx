@@ -67,6 +67,12 @@ export function CartaoProduto({ produto }: { produto: ProdutoCartao }) {
             <Cube size={64} weight="thin" className="text-ink-200" />
           )}
         </div>
+
+        {/* Espaço reservado para um selo/tag abaixo da imagem, igual à
+            referência (product.badge) — hoje não há campo de selo em
+            "produtos", mas o bloco fica reservado para não quebrar o
+            alinhamento dos cartões quando essa tag existir. */}
+        <div className="min-h-[34px] py-1" />
       </Link>
 
       <div className="flex flex-1 flex-col p-4">

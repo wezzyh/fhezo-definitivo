@@ -29,14 +29,6 @@ interface SecaoHomeBase {
   ativo: boolean;
 }
 
-export interface SecaoHero extends SecaoHomeBase {
-  tipo: "hero";
-  titulo: string;
-  subtitulo: string;
-  cta_texto: string;
-  cta_href: string;
-}
-
 export interface SecaoCategoriasDestaque extends SecaoHomeBase {
   tipo: "categorias_destaque";
   titulo: string;
@@ -56,7 +48,7 @@ export interface SecaoProdutosDestaque extends SecaoHomeBase {
   limite: number;
 }
 
-export type SecaoHome = SecaoHero | SecaoCategoriasDestaque | SecaoProdutosDestaque;
+export type SecaoHome = SecaoCategoriasDestaque | SecaoProdutosDestaque;
 
 export interface DadosHome {
   secoes: SecaoHome[];

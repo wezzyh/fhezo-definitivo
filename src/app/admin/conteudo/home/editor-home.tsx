@@ -27,9 +27,6 @@ interface EditorHomeProps {
 
 function novaSecao(tipo: SecaoHome["tipo"], ordem: number): SecaoHome {
   const base = { id: crypto.randomUUID(), ordem, ativo: true };
-  if (tipo === "hero") {
-    return { ...base, tipo, titulo: "", subtitulo: "", cta_texto: "Ver catálogo de produtos", cta_href: "/produtos" };
-  }
   if (tipo === "categorias_destaque") {
     return { ...base, tipo, titulo: "Categorias em destaque", subtitulo: "", categoria_ids: [] };
   }
@@ -46,7 +43,6 @@ function novaSecao(tipo: SecaoHome["tipo"], ordem: number): SecaoHome {
 }
 
 const ROTULOS_TIPO: Record<SecaoHome["tipo"], string> = {
-  hero: "Destaque principal",
   categorias_destaque: "Categorias em destaque",
   produtos_destaque: "Produtos em destaque",
 };
@@ -138,33 +134,6 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
           </div>
 
           <div className="mt-3 space-y-3">
-            {secao.tipo === "hero" && (
-              <>
-                <Input
-                  value={secao.titulo}
-                  onChange={(e) => atualizar(secao.id, { titulo: e.target.value })}
-                  placeholder="Título"
-                />
-                <Input
-                  value={secao.subtitulo}
-                  onChange={(e) => atualizar(secao.id, { subtitulo: e.target.value })}
-                  placeholder="Subtítulo"
-                />
-                <div className="flex gap-3">
-                  <Input
-                    value={secao.cta_texto}
-                    onChange={(e) => atualizar(secao.id, { cta_texto: e.target.value })}
-                    placeholder="Texto do botão"
-                  />
-                  <Input
-                    value={secao.cta_href}
-                    onChange={(e) => atualizar(secao.id, { cta_href: e.target.value })}
-                    placeholder="Link do botão"
-                  />
-                </div>
-              </>
-            )}
-
             {secao.tipo === "categorias_destaque" && (
               <>
                 <Input
@@ -265,9 +234,6 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
       ))}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => adicionar("hero")}>
-          + Destaque principal
-        </Button>
         <Button type="button" variant="outline" onClick={() => adicionar("categorias_destaque")}>
           + Categorias em destaque
         </Button>

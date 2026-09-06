@@ -22,17 +22,6 @@ export const MENU_PADRAO: DadosMenu = {
 export const HOME_PADRAO: DadosHome = {
   secoes: [
     {
-      id: "hero",
-      tipo: "hero",
-      titulo: "Componentes industriais de precisão para manter sua operação em movimento",
-      subtitulo:
-        "Rolamentos, engrenagens, correntes, graxas, ferramentas, parafusos e porcas especiais, com estoque pronto e atendimento técnico especializado.",
-      cta_texto: "Ver catálogo de produtos",
-      cta_href: "/produtos",
-      ordem: 1,
-      ativo: true,
-    },
-    {
       id: "produtos-destaque",
       tipo: "produtos_destaque",
       titulo: "Produtos em destaque",
@@ -41,7 +30,7 @@ export const HOME_PADRAO: DadosHome = {
       produto_ids: [],
       categoria_id: null,
       limite: 4,
-      ordem: 2,
+      ordem: 1,
       ativo: true,
     },
   ],
