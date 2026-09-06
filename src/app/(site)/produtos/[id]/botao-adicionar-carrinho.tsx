@@ -14,6 +14,7 @@ interface BotaoAdicionarCarrinhoProps {
   alturaCm: number;
   larguraCm: number;
   comprimentoCm: number;
+  imagemUrl: string | null;
 }
 
 export function BotaoAdicionarCarrinho(props: BotaoAdicionarCarrinhoProps) {
@@ -26,10 +27,10 @@ export function BotaoAdicionarCarrinho(props: BotaoAdicionarCarrinhoProps) {
   }
 
   function lidarComClique() {
-    const { produtoId, sku, nome, preco, estoque, pesoKg, alturaCm, larguraCm, comprimentoCm } =
+    const { produtoId, sku, nome, preco, estoque, pesoKg, alturaCm, larguraCm, comprimentoCm, imagemUrl } =
       props;
     adicionarItem(
-      { produtoId, sku, nome, preco, estoque, pesoKg, alturaCm, larguraCm, comprimentoCm },
+      { produtoId, sku, nome, preco, estoque, pesoKg, alturaCm, larguraCm, comprimentoCm, imagemUrl },
       quantidade,
     );
     setAdicionado(true);

@@ -12,6 +12,8 @@ export interface ItemCarrinho {
   alturaCm: number;
   larguraCm: number;
   comprimentoCm: number;
+  /** Opcional — produtos adicionados antes desta mudança ficam sem imagem no drawer, sem quebrar o carrinho salvo no localStorage. */
+  imagemUrl?: string | null;
 }
 
 export type NovoItemCarrinho = Omit<ItemCarrinho, "quantidade">;

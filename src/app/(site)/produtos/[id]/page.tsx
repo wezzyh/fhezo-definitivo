@@ -165,6 +165,7 @@ export default async function PaginaProduto({ params }: PaginaProdutoProps) {
                 preco={produto.preco}
                 estoque={produto.estoque}
                 pesoKg={produto.peso_kg}
+                imagemUrl={produto.imagem_url}
                 alturaCm={produto.altura_cm}
                 larguraCm={produto.largura_cm}
                 comprimentoCm={produto.comprimento_cm}

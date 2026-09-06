@@ -8,6 +8,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import {
@@ -27,6 +28,10 @@ interface ContextoCarrinhoValor {
   removerItem: (produtoId: string) => void;
   alterarQuantidade: (produtoId: string, quantidade: number) => void;
   limparCarrinho: () => void;
+  /** Estado de abertura do drawer do carrinho — puramente de UI, não persiste no localStorage junto com os itens. */
+  aberto: boolean;
+  abrirCarrinho: () => void;
+  fecharCarrinho: () => void;
 }
 
 const CarrinhoContext = createContext<ContextoCarrinhoValor | null>(null);
@@ -34,6 +39,7 @@ const CarrinhoContext = createContext<ContextoCarrinhoValor | null>(null);
 export function CarrinhoProvider({ children }: { children: ReactNode }) {
   const [estado, dispatch] = useReducer(carrinhoReducer, estadoInicialCarrinho);
   const hidratado = useRef(false);
+  const [aberto, setAberto] = useState(false);
 
   // Carrega o carrinho salvo no localStorage assim que o componente monta no
   // navegador. Só roda no cliente — o servidor sempre parte de um carrinho
@@ -79,6 +85,9 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
     dispatch({ tipo: "LIMPAR" });
   }, []);
 
+  const abrirCarrinho = useCallback(() => setAberto(true), []);
+  const fecharCarrinho = useCallback(() => setAberto(false), []);
+
   const quantidadeTotal = useMemo(
     () => estado.itens.reduce((total, item) => total + item.quantidade, 0),
     [estado.itens],
@@ -98,8 +107,22 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
       removerItem,
       alterarQuantidade,
       limparCarrinho,
+      aberto,
+      abrirCarrinho,
+      fecharCarrinho,
     }),
-    [estado.itens, quantidadeTotal, subtotal, adicionarItem, removerItem, alterarQuantidade, limparCarrinho],
+    [
+      estado.itens,
+      quantidadeTotal,
+      subtotal,
+      adicionarItem,
+      removerItem,
+      alterarQuantidade,
+      limparCarrinho,
+      aberto,
+      abrirCarrinho,
+      fecharCarrinho,
+    ],
   );
 
   return <CarrinhoContext.Provider value={valor}>{children}</CarrinhoContext.Provider>;
