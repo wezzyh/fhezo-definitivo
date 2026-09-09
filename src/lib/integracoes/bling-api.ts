@@ -102,6 +102,51 @@ interface ListaProdutosBling {
   data: ProdutoBlingResumo[];
 }
 
+/**
+ * Subconjunto do detalhe de produto (GET /produtos/{id}) que nos
+ * interessa — só os campos que o endpoint de lista (/produtos) NÃO traz:
+ * descrições completas, galeria de imagens, marca/peso/NCM/EAN
+ * estruturados. Confirmado contra a API real (ver bling-erp-api-js,
+ * IFindResponse) e contra o cadastro real do usuário no Bling: ele não usa
+ * "campos personalizados" — as especificações técnicas que ele digita
+ * (ex.: "Vedação: 2RS") ficam soltas dentro de descricaoCurta/
+ * descricaoComplementar, sem campo estruturado equivalente. Dimensões
+ * (largura/altura/profundidade) foram deixadas de fora deliberadamente: a
+ * API não deixa claro o código da unidade de medida, e converter errado
+ * corromperia o cálculo de frete — mais seguro deixar como está
+ * (preenchimento manual) do que arriscar.
+ */
+export interface ProdutoBlingDetalhe {
+  id: number;
+  descricaoCurta?: string;
+  descricaoComplementar?: string;
+  marca?: string;
+  gtin?: string;
+  pesoLiquido?: number;
+  pesoBruto?: number;
+  tributacao?: { ncm?: string };
+  midia?: {
+    imagens?: {
+      externas?: { link: string }[];
+      internas?: { linkMiniatura: string; ordem?: number }[];
+    };
+  };
+}
+
+interface DetalheProdutoBlingResposta {
+  data: ProdutoBlingDetalhe;
+}
+
+/** Busca o detalhe completo de UM produto no Bling (GET /produtos/{id}) — usado só quando falta algo que o endpoint de lista não traz (descrição, imagens, marca/peso/NCM/EAN), nunca na sincronização em massa de estoque (custaria 1 chamada por produto, contra o limite de 3 req/s do Bling). */
+export async function buscarDetalheProdutoBling(
+  supabase: SupabaseClient,
+  blingProdutoId: number,
+): Promise<ResultadoBling<ProdutoBlingDetalhe>> {
+  const resultado = await chamarBling<DetalheProdutoBlingResposta>(supabase, `/produtos/${blingProdutoId}`);
+  if (!resultado.sucesso) return resultado;
+  return { sucesso: true, dados: resultado.dados.data };
+}
+
 const LIMITE_POR_PAGINA_PRODUTOS = 100;
 const MAX_PAGINAS_PRODUTOS = 50; // segurança: até 5.000 produtos
 

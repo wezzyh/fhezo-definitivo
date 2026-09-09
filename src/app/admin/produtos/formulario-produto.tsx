@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import { UploadImagem } from "@/components/admin/upload-imagem";
+import { BotaoImportarBling } from "./botao-importar-bling";
 import { criarMarcaRapida } from "../marcas/actions";
 import { criarCategoriaRapida } from "../categorias/actions";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao } from "@/lib/categorias/hierarquia";
@@ -388,6 +389,8 @@ export function FormularioProduto({
       </div>
 
       <UploadImagem name="imagem_url" valorInicial={produto?.imagem_url ?? null} pasta="produtos" label="Imagem principal" />
+
+      {produto?.bling_produto_id && <BotaoImportarBling produtoId={produto.id} />}
 
       <div>
         <label htmlFor="descricao" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">

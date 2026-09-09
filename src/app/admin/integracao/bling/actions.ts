@@ -7,6 +7,7 @@ import { enviarPedidoParaBling } from "@/lib/integracoes/bling-pedidos";
 import { PROVEDOR_BLING } from "@/lib/integracoes/bling";
 import { obterOuCriarCategoriaPadrao, obterOuCriarMarcaPadrao } from "@/lib/produtos/padroes";
 import { registrarEventoIntegracao } from "@/lib/integracoes/eventos";
+import { aplicarDetalheProdutoBling } from "@/lib/integracoes/aplicar-produto-bling";
 import type { Produto } from "@/types/database";
 
 // Server Actions da seção "Integrações" do /admin: sincronização manual de
@@ -144,29 +145,48 @@ export async function sincronizarEstoqueBling(): Promise<ResultadoSincronizacaoB
     categoriaPadraoId ??= await obterOuCriarCategoriaPadrao(supabase);
     marcaPadraoId ??= await obterOuCriarMarcaPadrao(supabase);
 
-    const { error: erroInsert } = await supabase.from("produtos").insert({
-      sku: produtoBling.codigo,
-      nome: produtoBling.nome,
-      categoria_id: categoriaPadraoId,
-      marca_id: marcaPadraoId,
-      descricao: null,
-      atributos: {},
-      preco: precoZerado ? 0 : produtoBling.preco,
-      estoque: estoqueBling,
-      // ESSENCIAL: nunca aparece na loja até o admin revisar (categoria,
-      // preço se veio zerado, peso/dimensões reais, fotos, descrição).
-      ativo: false,
-      peso_kg: 1,
-      altura_cm: 10,
-      largura_cm: 10,
-      comprimento_cm: 10,
-      bling_produto_id: produtoBling.id,
-      bling_estoque_ultimo_sincronizado: estoqueBling,
-    });
+    const { data: produtoCriado, error: erroInsert } = await supabase
+      .from("produtos")
+      .insert({
+        sku: produtoBling.codigo,
+        nome: produtoBling.nome,
+        categoria_id: categoriaPadraoId,
+        marca_id: marcaPadraoId,
+        descricao: null,
+        atributos: {},
+        preco: precoZerado ? 0 : produtoBling.preco,
+        estoque: estoqueBling,
+        // ESSENCIAL: nunca aparece na loja até o admin revisar (categoria,
+        // preço se veio zerado, peso/dimensões reais, fotos, descrição).
+        ativo: false,
+        peso_kg: 1,
+        altura_cm: 10,
+        largura_cm: 10,
+        comprimento_cm: 10,
+        bling_produto_id: produtoBling.id,
+        bling_estoque_ultimo_sincronizado: estoqueBling,
+      })
+      .select("id")
+      .single<{ id: string }>();
 
-    if (!erroInsert) {
+    if (!erroInsert && produtoCriado) {
       criados.push({ sku: produtoBling.codigo, nome: produtoBling.nome, precoZerado });
-    } else {
+
+      // Melhor esforço: busca descrição/imagens/marca/EAN/NCM completos do
+      // Bling (o endpoint de lista usado acima não traz isso, só o de
+      // detalhe — ver aplicarDetalheProdutoBling). Uma chamada extra por
+      // produto NOVO apenas — nunca para os já existentes, que só têm o
+      // estoque atualizado acima.
+      const resultadoDetalhe = await aplicarDetalheProdutoBling(supabase, produtoCriado.id, produtoBling.id);
+      if (!resultadoDetalhe.sucesso) {
+        await registrarEventoIntegracao(supabase, {
+          provedor: "bling",
+          evento: "sincronizar_estoque",
+          sucesso: false,
+          mensagemErro: `Produto "${produtoBling.codigo}" criado, mas falhou ao buscar detalhe (descrição/imagens) no Bling: ${resultadoDetalhe.mensagem}`,
+        });
+      }
+    } else if (erroInsert) {
       await registrarEventoIntegracao(supabase, {
         provedor: "bling",
         evento: "sincronizar_estoque",

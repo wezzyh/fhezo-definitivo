@@ -75,6 +75,34 @@ export async function buscarIdMarcaPadrao(supabase: SupabaseClient): Promise<str
   return data?.id ?? null;
 }
 
+/**
+ * Encontra uma marca pelo nome (case-insensitive) ou cria — usado ao
+ * importar "marca" do Bling (texto livre lá, entidade própria aqui). Não
+ * confundir com obterOuCriarMarcaPadrao ("Sem marca"): esta busca por
+ * QUALQUER nome vindo de fora.
+ */
+export async function obterOuCriarMarcaPorNome(supabase: SupabaseClient, nome: string): Promise<string | null> {
+  const nomeLimpo = nome.trim();
+  if (!nomeLimpo) return null;
+
+  const { data: existente } = await supabase
+    .from("marcas")
+    .select("id")
+    .ilike("nome", nomeLimpo)
+    .maybeSingle<{ id: string }>();
+
+  if (existente) return existente.id;
+
+  const { data: nova, error } = await supabase
+    .from("marcas")
+    .insert({ nome: nomeLimpo, ativo: true })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (error || !nova) return null;
+  return nova.id;
+}
+
 export async function buscarIdCategoriaPadrao(supabase: SupabaseClient): Promise<string | null> {
   const { data } = await supabase
     .from("categorias")

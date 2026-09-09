@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import { existeSkuDuplicado, existeEanDuplicado } from "@/lib/produtos/duplicatas";
 import { removerImagemAdminSeOrfa } from "@/components/admin/upload-imagem-actions";
+import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
+import { aplicarDetalheProdutoBling } from "@/lib/integracoes/aplicar-produto-bling";
 
 export interface EstadoFormularioProduto {
   erro?: string;
@@ -239,6 +241,44 @@ export async function atualizarProduto(
   revalidatePath(`/produtos/${id}`);
   revalidatePath("/produtos");
   redirect("/admin/produtos");
+}
+
+export interface ResultadoImportarBling {
+  sucesso: boolean;
+  mensagem?: string;
+  camposPreenchidos: string[];
+}
+
+/**
+ * Busca o detalhe completo do produto no Bling (descrição, galeria de
+ * imagens, marca, EAN, NCM, peso) e preenche só o que estiver vazio no
+ * produto local — botão manual "Importar do Bling" na edição, pra
+ * corrigir produtos que foram criados pela sincronização de estoque antes
+ * de ela buscar esses dados (ou produtos onde a busca falhou naquele
+ * momento). Nunca sobrescreve o que o admin já editou.
+ */
+export async function importarDetalheBlingAction(produtoId: string): Promise<ResultadoImportarBling> {
+  const supabase = criarClienteSupabaseAdmin();
+
+  const { data: produto } = await supabase
+    .from("produtos")
+    .select("bling_produto_id")
+    .eq("id", produtoId)
+    .maybeSingle<{ bling_produto_id: number | null }>();
+
+  if (!produto?.bling_produto_id) {
+    return { sucesso: false, mensagem: "Este produto não está vinculado a um produto no Bling.", camposPreenchidos: [] };
+  }
+
+  const resultado = await aplicarDetalheProdutoBling(supabase, produtoId, produto.bling_produto_id);
+
+  if (resultado.sucesso) {
+    revalidatePath("/admin/produtos");
+    revalidatePath(`/admin/produtos/${produtoId}/editar`);
+    revalidatePath(`/produtos/${produtoId}`);
+  }
+
+  return resultado;
 }
 
 export async function excluirProduto(formData: FormData): Promise<void> {
