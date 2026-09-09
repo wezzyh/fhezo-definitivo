@@ -3,6 +3,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buscarDetalheProdutoBling } from "./bling-api";
 import { extrairDadosImportadosBling } from "./bling-produto-detalhe";
+import { rehospedarImagensBling } from "./bling-imagens";
+import { registrarEventoIntegracao } from "./eventos";
 import { obterOuCriarMarcaPorNome, obterOuCriarMarcaPadrao } from "@/lib/produtos/padroes";
 import type { Produto } from "@/types/database";
 
@@ -87,24 +89,92 @@ export async function aplicarDetalheProdutoBling(
   }
 
   if (dados.imagens.length > 0) {
-    const { count } = await supabase
+    // select real (não head:true) — um select com head:true não devolve
+    // corpo nenhum na resposta (HTTP 204), então um erro real (ex.: tabela
+    // fora do cache de schema do PostgREST) passava batido como "0
+    // imagens, count: null", em vez de aparecer como erro. Foi exatamente
+    // isso que mascarou a falha de imagem por um tempo.
+    const { data: imagensExistentes, error: erroConsulta } = await supabase
       .from("produto_imagens")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("produto_id", produtoId);
 
-    if (!count) {
-      const linhas = dados.imagens.map((url, indice) => ({
+    if (erroConsulta) {
+      await registrarEventoIntegracao(supabase, {
+        provedor: "bling",
+        evento: "importar_detalhe_produto",
+        sucesso: false,
+        mensagemErro: `Produto Bling ${blingProdutoId}: erro ao consultar galeria de imagens existente: ${erroConsulta.message}`,
+      });
+      return {
+        sucesso: false,
+        mensagem: `Erro ao consultar galeria de imagens: ${erroConsulta.message}`,
+        camposPreenchidos,
+      };
+    }
+
+    if (!imagensExistentes || imagensExistentes.length === 0) {
+      // As URLs do Bling (sobretudo as "internas") são links assinados que
+      // expiram em ~7 dias — baixa e re-hospeda no nosso Storage antes de
+      // gravar, em vez de guardar a URL crua (ver rehospedarImagensBling).
+      const { urls: imagensRehospedadas, falhas: falhasDownload } = await rehospedarImagensBling(
+        supabase,
+        dados.imagens,
+      );
+
+      if (imagensRehospedadas.length === 0) {
+        await registrarEventoIntegracao(supabase, {
+          provedor: "bling",
+          evento: "importar_detalhe_produto",
+          sucesso: false,
+          mensagemErro: `Produto Bling ${blingProdutoId}: falha ao baixar/re-hospedar todas as ${dados.imagens.length} imagem(ns) encontradas.`,
+        });
+        return {
+          sucesso: false,
+          mensagem: "O Bling tem imagens para este produto, mas nenhuma pôde ser baixada/re-hospedada agora.",
+          camposPreenchidos,
+        };
+      }
+
+      const linhas = imagensRehospedadas.map((url, indice) => ({
         produto_id: produtoId,
         url,
         posicao: indice,
         capa: indice === 0,
       }));
       const { error: erroImagens } = await supabase.from("produto_imagens").insert(linhas);
-      if (!erroImagens) {
-        camposPreenchidos.push(`${dados.imagens.length} imagem${dados.imagens.length > 1 ? "s" : ""}`);
-        if (!produtoAtual.imagem_url) {
-          await supabase.from("produtos").update({ imagem_url: dados.imagens[0] }).eq("id", produtoId);
-        }
+
+      if (erroImagens) {
+        await registrarEventoIntegracao(supabase, {
+          provedor: "bling",
+          evento: "importar_detalhe_produto",
+          sucesso: false,
+          mensagemErro: `Produto Bling ${blingProdutoId}: falha ao salvar ${imagensRehospedadas.length} imagem(ns) na galeria: ${erroImagens.message}`,
+        });
+        return {
+          sucesso: false,
+          mensagem: `Erro ao salvar imagens: ${erroImagens.message}`,
+          camposPreenchidos,
+        };
+      }
+
+      camposPreenchidos.push(
+        `${imagensRehospedadas.length} ${imagensRehospedadas.length > 1 ? "imagens" : "imagem"}`,
+      );
+      if (!produtoAtual.imagem_url) {
+        await supabase.from("produtos").update({ imagem_url: imagensRehospedadas[0] }).eq("id", produtoId);
+      }
+
+      // Sucesso parcial (baixou/salvou algumas, mas não todas) — não é
+      // motivo pra marcar a função inteira como falha (o que deu certo
+      // foi salvo), mas fica registrado pra não desaparecer sem rastro.
+      if (falhasDownload > 0) {
+        await registrarEventoIntegracao(supabase, {
+          provedor: "bling",
+          evento: "importar_detalhe_produto",
+          sucesso: false,
+          mensagemErro: `Produto Bling ${blingProdutoId}: ${falhasDownload} de ${dados.imagens.length} imagem(ns) não puderam ser baixadas/re-hospedadas (as demais foram salvas normalmente).`,
+        });
       }
     }
   }

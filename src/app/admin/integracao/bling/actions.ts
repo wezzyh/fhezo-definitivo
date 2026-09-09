@@ -36,6 +36,17 @@ const RESULTADO_ERRO = (mensagem: string): ResultadoSincronizacaoBling => ({
   criados: [],
 });
 
+// Espaçamento proativo entre chamadas de detalhe (GET /produtos/{id}) —
+// uma por produto NOVO criado nesta sincronização. O limite do Bling é 3
+// req/s (ver bling-api.ts); 350ms de intervalo fica com folga sem
+// depender só do retry reativo em 429, que existe mas só ajuda depois do
+// limite já ter sido estourado.
+const INTERVALO_ENTRE_DETALHES_MS = 350;
+
+function aguardar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Busca todos os produtos do Bling. Para cada um cujo código (SKU) já bate
  * com um produto local, atualiza o estoque — nunca recria. Para um produto
@@ -178,6 +189,7 @@ export async function sincronizarEstoqueBling(): Promise<ResultadoSincronizacaoB
       // produto NOVO apenas — nunca para os já existentes, que só têm o
       // estoque atualizado acima.
       const resultadoDetalhe = await aplicarDetalheProdutoBling(supabase, produtoCriado.id, produtoBling.id);
+      await aguardar(INTERVALO_ENTRE_DETALHES_MS);
       if (!resultadoDetalhe.sucesso) {
         await registrarEventoIntegracao(supabase, {
           provedor: "bling",
