@@ -128,7 +128,8 @@ export interface ProdutoBlingDetalhe {
   midia?: {
     imagens?: {
       externas?: { link: string }[];
-      internas?: { linkMiniatura: string; ordem?: number }[];
+      /** "link" é a imagem em tamanho real; "linkMiniatura" é só a prévia em baixa resolução — nunca usar linkMiniatura pra importar, ela existe só pra exibição rápida dentro do próprio Bling. */
+      internas?: { link: string; linkMiniatura: string; ordem?: number }[];
     };
   };
 }

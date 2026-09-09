@@ -24,7 +24,7 @@ export function extrairDadosImportadosBling(detalhe: ProdutoBlingDetalhe): Dados
   const imagensInternas = (detalhe.midia?.imagens?.internas ?? [])
     .slice()
     .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
-    .map((imagem) => imagem.linkMiniatura)
+    .map((imagem) => imagem.link)
     .filter(Boolean);
   // Prioriza imagens externas (URLs diretas, sem expirar) — internas (upload
   // direto no Bling) só como alternativa se não houver nenhuma externa.
