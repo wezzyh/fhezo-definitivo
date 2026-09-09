@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, LogOut } from "lucide-react";
+import { Menu as MenuIcon, LogOut, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sairAdmin } from "@/app/admin/actions";
 
@@ -68,6 +69,16 @@ export function HeaderAdmin({ userEmail, aoAbrirMenu }: HeaderAdminProps) {
             <p className="text-xs text-[var(--admin-text-secondary)]">Administrador</p>
           </div>
         </div>
+
+        <Link
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-[var(--admin-text-secondary)] outline-none transition-colors duration-150 hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--admin-focus,var(--color-brand-green))]"
+        >
+          <Store className="h-4 w-4" strokeWidth={1.75} />
+          <span className="hidden sm:inline">Voltar para loja</span>
+        </Link>
 
         <form action={sairAdmin}>
           <Button type="submit" variant="ghost" size="sm">

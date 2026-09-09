@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
-import { Cube } from "@phosphor-icons/react";
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { Cube, X, CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 interface GaleriaProdutoProps {
   nome: string;
@@ -38,15 +38,16 @@ function assinarSuporteAHover(avisar: () => void): () => void {
  * Só ativa em dispositivos com mouse de verdade (hover + ponteiro fino) —
  * em touch não existe "passar o mouse", então a lupa fica desligada e a
  * imagem funciona exatamente como antes (sem cursor de zoom, sem
- * listener nenhum).
+ * listener nenhum). O clique pra abrir em tela cheia funciona sempre,
+ * com ou sem lupa.
  */
-function ImagemComLupa({ url, nome }: { url: string; nome: string }) {
+function ImagemComLupa({ url, nome, aoClicar }: { url: string; nome: string; aoClicar: () => void }) {
   const comHover = useSyncExternalStore(assinarSuporteAHover, lerSuporteAHover, () => false);
   const [emZoom, setEmZoom] = useState(false);
   const [origem, setOrigem] = useState({ x: 50, y: 50 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLButtonElement>(null);
 
-  function lidarComMovimento(evento: MouseEvent<HTMLDivElement>) {
+  function lidarComMovimento(evento: MouseEvent<HTMLButtonElement>) {
     const container = containerRef.current;
     if (!container) return;
 
@@ -61,11 +62,14 @@ function ImagemComLupa({ url, nome }: { url: string; nome: string }) {
   }
 
   return (
-    <div
+    <button
+      type="button"
       ref={containerRef}
+      onClick={aoClicar}
       onMouseMove={comHover ? lidarComMovimento : undefined}
       onMouseLeave={() => setEmZoom(false)}
-      className={`relative h-full w-full ${comHover ? "cursor-zoom-in" : ""}`}
+      aria-label={`Ampliar imagem de ${nome}`}
+      className={`relative h-full w-full ${comHover ? "cursor-zoom-in" : "cursor-pointer"}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image. */}
       <img
@@ -87,6 +91,95 @@ function ImagemComLupa({ url, nome }: { url: string; nome: string }) {
           }}
         />
       )}
+    </button>
+  );
+}
+
+interface LightboxProps {
+  nome: string;
+  imagens: string[];
+  indiceInicial: number;
+  aoFechar: () => void;
+}
+
+/** Visualização em tela cheia — abre no clique da imagem principal, com navegação entre as fotos da galeria (quando há mais de uma) e fecha por X, clique fora ou Esc. */
+function Lightbox({ nome, imagens, indiceInicial, aoFechar }: LightboxProps) {
+  const [indice, setIndice] = useState(indiceInicial);
+
+  useEffect(() => {
+    const overflowOriginal = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") aoFechar();
+      if (evento.key === "ArrowRight") setIndice((atual) => (atual + 1) % imagens.length);
+      if (evento.key === "ArrowLeft") setIndice((atual) => (atual - 1 + imagens.length) % imagens.length);
+    }
+    window.addEventListener("keydown", aoTeclar);
+
+    return () => {
+      document.body.style.overflow = overflowOriginal;
+      window.removeEventListener("keydown", aoTeclar);
+    };
+  }, [aoFechar, imagens.length]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Imagem ampliada de ${nome}`}
+      onClick={aoFechar}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/90 p-4 sm:p-10"
+    >
+      <button
+        type="button"
+        onClick={aoFechar}
+        aria-label="Fechar"
+        className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 sm:right-6 sm:top-6"
+      >
+        <X size={24} weight="bold" />
+      </button>
+
+      {imagens.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(evento) => {
+              evento.stopPropagation();
+              setIndice((atual) => (atual - 1 + imagens.length) % imagens.length);
+            }}
+            aria-label="Imagem anterior"
+            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 sm:left-6"
+          >
+            <CaretLeft size={24} weight="bold" />
+          </button>
+          <button
+            type="button"
+            onClick={(evento) => {
+              evento.stopPropagation();
+              setIndice((atual) => (atual + 1) % imagens.length);
+            }}
+            aria-label="Próxima imagem"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 sm:right-6"
+          >
+            <CaretRight size={24} weight="bold" />
+          </button>
+        </>
+      )}
+
+      {/* eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image. */}
+      <img
+        src={imagens[indice]}
+        alt={nome}
+        onClick={(evento) => evento.stopPropagation()}
+        className="max-h-full max-w-full cursor-default object-contain"
+      />
+
+      {imagens.length > 1 && (
+        <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white sm:bottom-6">
+          {indice + 1} / {imagens.length}
+        </span>
+      )}
     </div>
   );
 }
@@ -96,6 +189,7 @@ function ImagemComLupa({ url, nome }: { url: string; nome: string }) {
 // principal continua exatamente como antes).
 export function GaleriaProduto({ nome, imagens }: GaleriaProdutoProps) {
   const [selecionada, setSelecionada] = useState(0);
+  const [lightboxAberta, setLightboxAberta] = useState(false);
 
   if (imagens.length === 0) {
     return (
@@ -127,8 +221,22 @@ export function GaleriaProduto({ nome, imagens }: GaleriaProdutoProps) {
       )}
 
       <div className="flex min-h-[320px] flex-1 items-center justify-center overflow-hidden rounded-fhezo bg-warm-50 p-6 lg:min-h-[480px]">
-        <ImagemComLupa key={imagens[selecionada]} url={imagens[selecionada]} nome={nome} />
+        <ImagemComLupa
+          key={imagens[selecionada]}
+          url={imagens[selecionada]}
+          nome={nome}
+          aoClicar={() => setLightboxAberta(true)}
+        />
       </div>
+
+      {lightboxAberta && (
+        <Lightbox
+          nome={nome}
+          imagens={imagens}
+          indiceInicial={selecionada}
+          aoFechar={() => setLightboxAberta(false)}
+        />
+      )}
     </div>
   );
 }
