@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import { BotaoAlternarAtivoMarca } from "./botao-alternar-ativo";
+import { BotaoMoverMarca } from "./botao-mover-marca";
 import type { Marca } from "@/types/database";
 
 export default async function AdminMarcasPage() {
@@ -9,6 +10,7 @@ export default async function AdminMarcasPage() {
   const { data: marcas, error } = await supabase
     .from("marcas")
     .select("*")
+    .order("ordem")
     .order("nome")
     .returns<Marca[]>();
 
@@ -32,17 +34,21 @@ export default async function AdminMarcasPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-[var(--admin-border)] bg-[var(--admin-surface-hover)] text-xs uppercase text-[var(--admin-text-secondary)]">
               <tr>
+                <th className="px-4 py-3 font-medium">Ordem</th>
                 <th className="px-4 py-3 font-medium">Nome</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {marcas.map((marca) => (
+              {marcas.map((marca, indice) => (
                 <tr
                   key={marca.id}
                   className="border-b border-[var(--admin-border)] transition-colors duration-150 last:border-0 hover:bg-[var(--admin-surface-hover)]"
                 >
+                  <td className="px-4 py-3">
+                    <BotaoMoverMarca id={marca.id} podeSubir={indice > 0} podeDescer={indice < marcas.length - 1} />
+                  </td>
                   <td className="px-4 py-3 font-medium text-[var(--admin-text)]">{marca.nome}</td>
                   <td className="px-4 py-3">
                     <span

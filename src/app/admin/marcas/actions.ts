@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
+import { removerImagemAdminSeOrfa } from "@/components/admin/upload-imagem-actions";
+import type { Marca } from "@/types/database";
 
 export interface EstadoFormularioMarca {
   erro?: string;
@@ -22,9 +24,10 @@ export async function criarMarca(
   if (typeof nome !== "string") return nome;
 
   const ativo = formData.get("ativo") === "on";
+  const imagem_url = String(formData.get("imagem_url") ?? "").trim() || null;
 
   const supabase = await criarClienteSupabaseServidor();
-  const { error } = await supabase.from("marcas").insert({ nome, ativo });
+  const { error } = await supabase.from("marcas").insert({ nome, ativo, imagem_url });
 
   if (error) {
     return { erro: `Erro ao salvar marca: ${error.message}` };
@@ -32,6 +35,7 @@ export async function criarMarca(
 
   revalidatePath("/admin/marcas");
   revalidatePath("/admin/produtos");
+  revalidatePath("/");
   redirect("/admin/marcas");
 }
 
@@ -44,18 +48,59 @@ export async function atualizarMarca(
   if (typeof nome !== "string") return nome;
 
   const ativo = formData.get("ativo") === "on";
+  const imagem_url = String(formData.get("imagem_url") ?? "").trim() || null;
 
   const supabase = await criarClienteSupabaseServidor();
-  const { error } = await supabase.from("marcas").update({ nome, ativo }).eq("id", id);
+  const { error } = await supabase.from("marcas").update({ nome, ativo, imagem_url }).eq("id", id);
 
   if (error) {
     return { erro: `Erro ao atualizar marca: ${error.message}` };
   }
 
+  const imagemAnterior = String(formData.get("imagem_url_anterior") ?? "").trim() || null;
+  await removerImagemAdminSeOrfa(imagemAnterior, imagem_url);
+
   revalidatePath("/admin/marcas");
   revalidatePath("/admin/produtos");
   revalidatePath("/produtos");
+  revalidatePath("/");
   redirect("/admin/marcas");
+}
+
+/**
+ * Move uma marca uma posição pra cima/baixo (lista única, marcas não têm
+ * hierarquia) — troca o valor de "ordem" entre ela e a vizinha adjacente.
+ */
+export async function moverMarca(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  const direcao = Number(formData.get("direcao") ?? 0);
+  if (!id || (direcao !== 1 && direcao !== -1)) return;
+
+  const supabase = await criarClienteSupabaseServidor();
+
+  const { data: marcas } = await supabase
+    .from("marcas")
+    .select("id, ordem")
+    .order("ordem", { ascending: true })
+    .order("nome", { ascending: true })
+    .returns<Pick<Marca, "id" | "ordem">[]>();
+
+  if (!marcas) return;
+
+  const indiceAtual = marcas.findIndex((marca) => marca.id === id);
+  const indiceVizinha = indiceAtual + direcao;
+  if (indiceAtual === -1 || indiceVizinha < 0 || indiceVizinha >= marcas.length) return;
+
+  const atual = marcas[indiceAtual];
+  const vizinha = marcas[indiceVizinha];
+
+  await Promise.all([
+    supabase.from("marcas").update({ ordem: vizinha.ordem }).eq("id", id),
+    supabase.from("marcas").update({ ordem: atual.ordem }).eq("id", vizinha.id),
+  ]);
+
+  revalidatePath("/admin/marcas");
+  revalidatePath("/");
 }
 
 export async function alternarAtivoMarca(formData: FormData): Promise<void> {

@@ -7,12 +7,13 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import { UploadImagem } from "@/components/admin/upload-imagem";
+import { GaleriaProdutoAdmin } from "./galeria-produto-admin";
 import { BotaoImportarBling } from "./botao-importar-bling";
 import { criarMarcaRapida } from "../marcas/actions";
 import { criarCategoriaRapida } from "../categorias/actions";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao } from "@/lib/categorias/hierarquia";
 import type { EstadoFormularioProduto } from "./actions";
-import type { Produto, Marca, Categoria } from "@/types/database";
+import type { Produto, Marca, Categoria, ProdutoImagem } from "@/types/database";
 
 interface ParAtributo {
   chave: string;
@@ -21,6 +22,8 @@ interface ParAtributo {
 
 interface FormularioProdutoProps {
   produto?: Produto;
+  /** Só faz sentido quando "produto" já existe (galeria persiste na hora, não faz parte do FormData deste form) — ver galeria-produto-admin.tsx. */
+  imagensGaleria?: ProdutoImagem[];
   marcasIniciais: Marca[];
   categoriasIniciais: Categoria[];
   action: (
@@ -41,6 +44,7 @@ const estadoInicial: EstadoFormularioProduto = {};
 
 export function FormularioProduto({
   produto,
+  imagensGaleria,
   marcasIniciais,
   categoriasIniciais,
   action,
@@ -94,7 +98,10 @@ export function FormularioProduto({
       return;
     }
 
-    setMarcas((atual) => [...atual, { id: resultado.id, nome: resultado.nome, ativo: true, created_at: "" }]);
+    setMarcas((atual) => [
+      ...atual,
+      { id: resultado.id, nome: resultado.nome, ativo: true, imagem_url: null, ordem: 0, created_at: "" },
+    ]);
     setMarcaSelecionada(resultado.id);
     setNomeNovaMarca("");
     setMostrandoNovaMarca(false);
@@ -119,6 +126,8 @@ export function FormularioProduto({
         slug: "",
         categoria_pai_id: null,
         ativo: true,
+        imagem_url: null,
+        ordem: 0,
         created_at: "",
       },
     ]);
@@ -390,6 +399,8 @@ export function FormularioProduto({
 
       <UploadImagem name="imagem_url" valorInicial={produto?.imagem_url ?? null} pasta="produtos" label="Imagem principal" />
 
+      {produto && <GaleriaProdutoAdmin produtoId={produto.id} imagensIniciais={imagensGaleria ?? []} />}
+
       {produto?.bling_produto_id && <BotaoImportarBling produtoId={produto.id} />}
 
       <div>
@@ -397,6 +408,10 @@ export function FormularioProduto({
           Descrição
         </label>
         <Textarea id="descricao" name="descricao" defaultValue={produto?.descricao ?? ""} rows={4} />
+        <p className="mt-1 text-xs text-[var(--admin-text-secondary)]">
+          Pode ser texto simples ou HTML (ex.: colado do Bling) — a loja renderiza HTML formatado
+          automaticamente, com sanitização contra scripts.
+        </p>
       </div>
 
       <div>

@@ -114,6 +114,43 @@ body {
   overflow: hidden;
 }
 
+/*
+ * Descrição de produto: renderizada via dangerouslySetInnerHTML depois de
+ * sanitizada com DOMPurify (ver sanitizarDescricaoProduto) — pode conter
+ * HTML de verdade (colado do Bling) ou só texto puro com quebras de linha
+ * (o white-space: pre-line no elemento cobre esse segundo caso). O
+ * Preflight do Tailwind zera margem de parágrafo/heading e list-style por
+ * padrão — sem isso aqui, HTML com <p>/<ul> renderizaria sem nenhum
+ * espaçamento nem marcador de lista.
+ */
+.descricao-produto p {
+  margin-bottom: 0.75em;
+}
+.descricao-produto ul,
+.descricao-produto ol {
+  margin: 0.5em 0 0.75em 1.25em;
+}
+.descricao-produto ul {
+  list-style: disc;
+}
+.descricao-produto ol {
+  list-style: decimal;
+}
+.descricao-produto li {
+  margin-bottom: 0.25em;
+}
+.descricao-produto h1,
+.descricao-produto h2,
+.descricao-produto h3,
+.descricao-produto h4 {
+  margin: 0.75em 0 0.4em;
+  font-weight: 600;
+}
+.descricao-produto a {
+  color: var(--color-fhezo-600, inherit);
+  text-decoration: underline;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

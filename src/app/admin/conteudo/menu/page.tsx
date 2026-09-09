@@ -26,8 +26,10 @@ export default async function AdminMenuPage() {
     <div>
       <h1 className="text-2xl font-semibold text-[var(--admin-text)]">Menu</h1>
       <p className="mt-1 text-sm text-[var(--admin-text-secondary)]">
-        Estrutura do menu de categorias exibido no topo do site. Itens do tipo &quot;Categoria&quot; geram o
-        link automaticamente a partir da categoria vinculada — nunca digite a URL à mão para esses.
+        Itens exibidos na barra de menu do cabeçalho do site, ao lado do botão &quot;Departamentos&quot;
+        (que lista automaticamente todas as categorias e não é editado aqui). Itens do tipo
+        &quot;Categoria&quot; geram o link automaticamente a partir da categoria vinculada — nunca digite
+        a URL à mão para esses.
       </p>
 
       <div className="mt-6 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-6">

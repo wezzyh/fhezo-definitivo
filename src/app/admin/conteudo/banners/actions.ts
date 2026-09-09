@@ -33,7 +33,10 @@ function validarDadosBanner(formData: FormData): DadosBanner | { erro: string } 
     return { erro: "A data de início não pode ser depois da data de fim." };
   }
 
-  return { imagem_url, link_url, titulo, ordem, ativo, data_inicio, data_fim };
+  const posicaoBruta = String(formData.get("posicao") ?? "").trim();
+  const posicao = posicaoBruta === "faixa_institucional" ? "faixa_institucional" : "hero";
+
+  return { imagem_url, link_url, titulo, ordem, ativo, data_inicio, data_fim, posicao };
 }
 
 async function publicarVersaoBanner(

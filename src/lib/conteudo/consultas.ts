@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { criarClienteSupabasePublico } from "@/lib/supabase/publico";
-import type { ConteudoSite, TipoConteudoSite, Banner } from "@/types/database";
-import type { DadosMenu, DadosHome, DadosTema, DadosBanner, DadosFooter } from "./tipos";
-import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO, FOOTER_PADRAO } from "./padroes";
+import type { ConteudoSite, TipoConteudoSite, Banner, PaginaInstitucional } from "@/types/database";
+import type { DadosMenu, DadosHome, DadosTema, DadosBanner, DadosFooter, DadosSeo } from "./tipos";
+import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO, FOOTER_PADRAO, SEO_PADRAO } from "./padroes";
 
 // Leituras públicas (site) de conteúdo versionado — sempre a versão mais
 // recente com publicado=true de cada tipo, nunca o histórico. Cacheadas
@@ -68,6 +68,30 @@ export const obterFooterPublicado = unstable_cache(
   { tags: ["conteudo-footer"], revalidate: REVALIDATE_SEGUNDOS },
 );
 
+export const obterSeoPublicado = unstable_cache(
+  async (): Promise<DadosSeo> => {
+    const conteudo = await buscarPublicado("seo");
+    return (conteudo?.dados as DadosSeo | undefined) ?? SEO_PADRAO;
+  },
+  ["conteudo-site-seo"],
+  { tags: ["conteudo-seo"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+/** Páginas institucionais ativas (Sobre nós, Política de privacidade, etc.), editadas em /admin/conteudo/paginas — usado pelo footer para saber para quais dessas existe um link real, e pela rota pública /institucional/[slug]. */
+export const obterPaginasInstitucionaisPublicadas = unstable_cache(
+  async (): Promise<Pick<PaginaInstitucional, "slug" | "titulo">[]> => {
+    const supabase = criarClienteSupabasePublico();
+    const { data } = await supabase
+      .from("paginas_institucionais")
+      .select("slug, titulo")
+      .eq("ativo", true)
+      .returns<Pick<PaginaInstitucional, "slug" | "titulo">[]>();
+    return data ?? [];
+  },
+  ["paginas-institucionais-publicadas"],
+  { tags: ["conteudo-paginas"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
 export const obterBannersPublicados = unstable_cache(
   async (): Promise<Banner[]> => {
     const supabase = criarClienteSupabasePublico();
@@ -112,9 +136,9 @@ export const obterArvoreCategoriasPublica = unstable_cache(
     const supabase = criarClienteSupabasePublico();
     const { data } = await supabase
       .from("categorias")
-      .select("id, nome, slug, categoria_pai_id")
+      .select("id, nome, slug, categoria_pai_id, ordem")
       .eq("ativo", true)
-      .returns<{ id: string; nome: string; slug: string; categoria_pai_id: string | null }[]>();
+      .returns<{ id: string; nome: string; slug: string; categoria_pai_id: string | null; ordem: number }[]>();
 
     const categorias = data ?? [];
     const filhosPorPai = new Map<string | null, typeof categorias>();
@@ -127,7 +151,7 @@ export const obterArvoreCategoriasPublica = unstable_cache(
       }
     }
     for (const lista of filhosPorPai.values()) {
-      lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      lista.sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
     }
 
     function montar(paiId: string | null): DepartamentoPublico[] {

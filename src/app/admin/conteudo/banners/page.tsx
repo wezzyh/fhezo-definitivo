@@ -53,6 +53,9 @@ export default async function AdminBannersPage() {
                     </p>
                   )}
                 </div>
+                <span className="rounded-full bg-[var(--admin-surface-hover)] px-2 py-0.5 text-xs font-medium text-[var(--admin-text-secondary)]">
+                  {dados.posicao === "faixa_institucional" ? "Faixa institucional" : "Banner principal"}
+                </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     dados.ativo

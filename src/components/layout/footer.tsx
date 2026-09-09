@@ -11,9 +11,24 @@ import {
 } from "@phosphor-icons/react/ssr";
 
 import Link from "next/link";
-import { obterFooterPublicado, obterArvoreCategoriasPublica } from "@/lib/conteudo/consultas";
+import {
+  obterFooterPublicado,
+  obterArvoreCategoriasPublica,
+  obterPaginasInstitucionaisPublicadas,
+} from "@/lib/conteudo/consultas";
 import { CONTATO_FIXO } from "@/lib/conteudo/contato-fixo";
 import type { ImagemFooter } from "@/lib/conteudo/tipos";
+
+// Slugs fixos das 4 páginas institucionais seedadas na migration 0021 —
+// só usados aqui para saber se existe uma página real (e ativa) por trás
+// de cada label do footer; se o admin desativar uma, o link volta a "#"
+// em vez de apontar para uma página que dá 404.
+const SLUGS_INSTITUCIONAIS: Record<string, string> = {
+  "Sobre nós": "sobre-nos",
+  "Política de privacidade": "politica-de-privacidade",
+  "Trocas e devoluções": "trocas-e-devolucoes",
+  "Termos de uso": "termos-de-uso",
+};
 
 // Copiado literalmente de referencia-novo-frontend/src/components/layout/Footer.tsx.
 // Diferenças em relação à referência, todas onde ela usava dado mockado:
@@ -35,18 +50,28 @@ import type { ImagemFooter } from "@/lib/conteudo/tipos";
 // - Institucional/Central de atendimento continuam com links "#": a
 //   referência também não tem páginas reais atrás desses links.
 export async function Footer() {
-  const [dadosFooter, categorias] = await Promise.all([obterFooterPublicado(), obterArvoreCategoriasPublica()]);
+  const [dadosFooter, categorias, paginasInstitucionais] = await Promise.all([
+    obterFooterPublicado(),
+    obterArvoreCategoriasPublica(),
+    obterPaginasInstitucionaisPublicadas(),
+  ]);
 
   const productLinks = categorias.map((categoria) => ({ label: categoria.label, href: categoria.href }));
 
+  const slugsAtivos = new Set(paginasInstitucionais.map((pagina) => pagina.slug));
+  function hrefInstitucional(label: string): string {
+    const slug = SLUGS_INSTITUCIONAIS[label];
+    return slug && slugsAtivos.has(slug) ? `/institucional/${slug}` : "#";
+  }
+
   const institutionalLinks = [
-    "Quem somos",
+    "Sobre nós",
     "Nossas lojas",
     "Mapa do site",
     "Blog Fhezo",
     "Política de qualidade",
     "Trabalhe conosco",
-  ].map((label) => ({ label, href: "#" }));
+  ].map((label) => ({ label, href: hrefInstitucional(label) }));
 
   const customerLinks = [
     "Minha conta",
@@ -55,7 +80,7 @@ export async function Footer() {
     "Política de privacidade",
     "Trocas e devoluções",
     "Termos de uso",
-  ].map((label) => ({ label, href: "#" }));
+  ].map((label) => ({ label, href: hrefInstitucional(label) }));
 
   return (
     <footer className="mt-14 bg-ink-950 text-white">

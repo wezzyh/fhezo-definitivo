@@ -3,15 +3,29 @@ import { notFound } from "next/navigation";
 import { CaretRight, Cube } from "@phosphor-icons/react/ssr";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import { formatarAtributosTecnicos } from "@/lib/produtos/formatar-atributos";
+import { sanitizarDescricaoProduto } from "@/lib/produtos/sanitizar-descricao";
 import { calcularDesconto, calcularPrecoPix, calcularParcelamento } from "@/lib/produtos/precificacao";
 import { CartaoProduto } from "@/components/produtos/cartao-produto";
+import BuyTogether from "@/components/produtos/CompreJunto";
 import { BotaoAdicionarCarrinho } from "./botao-adicionar-carrinho";
-import type { Produto } from "@/types/database";
+import { GaleriaProduto } from "./galeria-produto";
+import type { Produto, ProdutoImagem } from "@/types/database";
 import type { Metadata } from "next";
 
 interface ProdutoComRelacoes extends Produto {
   marca: { nome: string } | null;
   categoria: { id: string; nome: string; slug: string } | null;
+}
+
+async function buscarGaleriaProduto(produtoId: string): Promise<string[]> {
+  const supabase = await criarClienteSupabaseServidor();
+  const { data } = await supabase
+    .from("produto_imagens")
+    .select("url")
+    .eq("produto_id", produtoId)
+    .order("posicao")
+    .returns<Pick<ProdutoImagem, "url">[]>();
+  return (data ?? []).map((imagem) => imagem.url);
 }
 
 interface PaginaProdutoProps {
@@ -72,10 +86,17 @@ export default async function PaginaProduto({ params }: PaginaProdutoProps) {
   }
 
   const atributos = formatarAtributosTecnicos(produto.atributos);
+  const descricaoHtml = produto.descricao ? sanitizarDescricaoProduto(produto.descricao) : null;
   const { temDesconto, percentualDesconto } = calcularDesconto(produto.preco, produto.preco_de);
   const parcelamento = calcularParcelamento(produto.preco);
   const semEstoque = produto.estoque <= 0;
   const produtosSimilares = produto.categoria ? await buscarProdutosSimilares(produto.categoria.id, produto.id) : [];
+
+  const galeriaAdicional = await buscarGaleriaProduto(produto.id);
+  const imagensGaleria = [
+    ...(produto.imagem_url ? [produto.imagem_url] : []),
+    ...galeriaAdicional.filter((url) => url !== produto.imagem_url),
+  ];
 
   return (
     <main className="bg-warm-100 pb-16">
@@ -96,14 +117,7 @@ export default async function PaginaProduto({ params }: PaginaProdutoProps) {
         </nav>
 
         <section className="grid gap-10 rounded-fhezo bg-white p-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(420px,.8fr)] lg:p-8">
-          <div className="flex min-h-[320px] items-center justify-center rounded-fhezo bg-warm-50 p-6 lg:min-h-[480px]">
-            {produto.imagem_url ? (
-              // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image.
-              <img src={produto.imagem_url} alt={produto.nome} className="max-h-[440px] w-full object-contain" />
-            ) : (
-              <Cube size={96} weight="thin" className="text-ink-200" />
-            )}
-          </div>
+          <GaleriaProduto nome={produto.nome} imagens={imagensGaleria} />
 
           <div>
             <h1 className="font-display text-[27px] font-semibold leading-[1.08] text-ink-900">{produto.nome}</h1>
@@ -155,8 +169,6 @@ export default async function PaginaProduto({ params }: PaginaProdutoProps) {
               )}
             </div>
 
-            {produto.descricao && <p className="mt-6 text-sm text-ink-700">{produto.descricao}</p>}
-
             <div className="mt-7">
               <BotaoAdicionarCarrinho
                 produtoId={produto.id}
@@ -174,21 +186,43 @@ export default async function PaginaProduto({ params }: PaginaProdutoProps) {
           </div>
         </section>
 
-        {atributos.length > 0 && (
+        {produtosSimilares[0] && (
+          <BuyTogether currentProduct={produto} secondProduct={produtosSimilares[0]} />
+        )}
+
+        {(descricaoHtml || atributos.length > 0) && (
           <section className="mt-12 bg-white">
-            <div className="border-b border-ink-200 px-6 py-5">
-              <h2 className="font-display text-[25px] font-semibold text-ink-900">Informações técnicas</h2>
-            </div>
-            <div className="grid gap-x-12 px-6 py-6 lg:grid-cols-2">
-              {atributos.map((atributo) => (
-                <div
-                  key={atributo.rotulo}
-                  className="grid grid-cols-[160px_minmax(0,1fr)] border-b border-ink-200 py-3 text-sm"
-                >
-                  <span className="font-semibold text-ink-600">{atributo.rotulo}</span>
-                  <span className="text-ink-900">{atributo.valor}</span>
+            <div
+              className={`grid gap-x-12 gap-y-10 p-6 ${
+                descricaoHtml && atributos.length > 0 ? "lg:grid-cols-2" : "lg:grid-cols-1"
+              }`}
+            >
+              {descricaoHtml && (
+                <div>
+                  <h2 className="font-display text-[25px] font-semibold text-ink-900">Descrição</h2>
+                  <div
+                    className="descricao-produto mt-4 whitespace-pre-line text-sm leading-relaxed text-ink-700"
+                    dangerouslySetInnerHTML={{ __html: descricaoHtml }}
+                  />
                 </div>
-              ))}
+              )}
+
+              {atributos.length > 0 && (
+                <div>
+                  <h2 className="font-display text-[25px] font-semibold text-ink-900">Informações técnicas</h2>
+                  <div className="mt-4">
+                    {atributos.map((atributo) => (
+                      <div
+                        key={atributo.rotulo}
+                        className="grid grid-cols-[160px_minmax(0,1fr)] border-b border-ink-200 py-3 text-sm"
+                      >
+                        <span className="font-semibold text-ink-600">{atributo.rotulo}</span>
+                        <span className="text-ink-900">{atributo.valor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         )}

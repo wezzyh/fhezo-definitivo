@@ -4,6 +4,7 @@ import { useActionState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { UploadImagem } from "@/components/admin/upload-imagem";
 import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import { ordenarCategoriasComHierarquia, rotuloComIndentacao, descendentesDe } from "@/lib/categorias/hierarquia";
 import type { EstadoFormularioCategoria } from "./actions";
@@ -41,6 +42,13 @@ export function FormularioCategoria({ categoria, categorias, action, textoBotao 
         </label>
         <Input id="nome" name="nome" defaultValue={categoria?.nome} required />
       </div>
+
+      <UploadImagem
+        name="imagem_url"
+        valorInicial={categoria?.imagem_url ?? null}
+        pasta="categorias"
+        label="Imagem"
+      />
 
       <div>
         <label htmlFor="categoria_pai_id" className="mb-1 block text-sm font-medium text-[var(--admin-text)]">

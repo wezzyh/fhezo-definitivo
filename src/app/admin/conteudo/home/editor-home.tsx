@@ -178,9 +178,12 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
                 />
                 <Select
                   value={secao.modo}
-                  onChange={(e) => atualizar(secao.id, { modo: e.target.value as "manual" | "automatico" })}
+                  onChange={(e) =>
+                    atualizar(secao.id, { modo: e.target.value as "manual" | "automatico" | "mais_vendidos" })
+                  }
                 >
                   <option value="automatico">Automático (mais recentes, opcionalmente por categoria)</option>
+                  <option value="mais_vendidos">Mais vendidos (dados reais de vendas)</option>
                   <option value="manual">Manual (escolher produtos)</option>
                 </Select>
 
@@ -206,6 +209,17 @@ export function EditorHome({ secoesIniciais, categorias, produtos }: EditorHomeP
                       className="w-24"
                     />
                   </div>
+                )}
+
+                {secao.modo === "mais_vendidos" && (
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={secao.limite}
+                    onChange={(e) => atualizar(secao.id, { limite: Number(e.target.value) || 1 })}
+                    className="w-24"
+                  />
                 )}
 
                 {secao.modo === "manual" && (

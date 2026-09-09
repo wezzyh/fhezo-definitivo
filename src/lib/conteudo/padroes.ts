@@ -1,4 +1,4 @@
-import type { DadosMenu, DadosHome, DadosTema, DadosFooter } from "./tipos";
+import type { DadosMenu, DadosHome, DadosTema, DadosFooter, DadosSeo } from "./tipos";
 
 // Conteúdo padrão usado em dois casos: (1) fallback em runtime se a tabela
 // conteudo_site ainda não tiver nenhuma versão publicada de um tipo (ex.:
@@ -55,5 +55,18 @@ export const TEMA_PADRAO: DadosTema = {
     ink: "#1a1a1a",
     muted: "#5f5e5a",
     warning: "#e8b93a",
+  },
+};
+
+// "seo" também não tinha nada versionado antes — os textos abaixo são só
+// os que já estavam fixos no <title> do root layout (src/app/layout.tsx).
+export const SEO_PADRAO: DadosSeo = {
+  home: {
+    titulo: "FHEZO Industrial",
+    descricao: "Componentes industriais para sua indústria: rolamentos, engrenagens, correntes, graxas, ferramentas e mais.",
+  },
+  produtos: {
+    titulo: "Produtos | FHEZO Industrial",
+    descricao: "Catálogo completo de componentes industriais da FHEZO Industrial.",
   },
 };

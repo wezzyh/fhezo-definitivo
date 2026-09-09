@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { converterImagemParaWebP } from "@/lib/imagens/converter-webp";
 import { enviarImagemAdmin } from "./upload-imagem-actions";
 
@@ -12,11 +13,13 @@ interface UploadImagemProps {
   name: string;
   valorInicial: string | null;
   /** Pasta dentro do bucket "admin-imagens" (ver enviarImagemAdmin — a mesma lista de PASTAS_PERMITIDAS precisa ser mantida em sincronia). */
-  pasta: "produtos" | "banners" | "footer-pagamentos" | "footer-selos";
+  pasta: "produtos" | "banners" | "footer-pagamentos" | "footer-selos" | "categorias" | "marcas";
   label: string;
   obrigatorio?: boolean;
   /** Opcional: além do campo oculto (para <form action>), notifica o valor final a cada upload/remoção bem-sucedidos — usado por editores que mantêm uma lista em estado React (ver editor-footer.tsx) em vez de um <form> nativo. */
   onChange?: (url: string | null) => void;
+  /** true = miniatura quadrada pequena (48px) em vez da área de arrastar-e-soltar grande — pra listas com várias imagens lado a lado onde o card grande de sempre fica desproporcional (ex.: ícones do rodapé em editor-footer.tsx). Mesma lógica de upload/remoção, só a UI muda. */
+  compacto?: boolean;
 }
 
 // Componente de upload de imagem reutilizado nos formulários de admin que
@@ -26,7 +29,15 @@ interface UploadImagemProps {
 // tamanho do upload; sobe via Server Action (enviarImagemAdmin) para o
 // Storage do Supabase; o valor final continua sendo uma URL de texto,
 // exatamente o que a coluna no banco já esperava antes.
-export function UploadImagem({ name, valorInicial, pasta, label, obrigatorio, onChange }: UploadImagemProps) {
+export function UploadImagem({
+  name,
+  valorInicial,
+  pasta,
+  label,
+  obrigatorio,
+  onChange,
+  compacto,
+}: UploadImagemProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(valorInicial);
   const [valorFinal, setValorFinal] = useState<string | null>(valorInicial);
@@ -103,14 +114,80 @@ export function UploadImagem({ name, valorInicial, pasta, label, obrigatorio, on
     onChange?.(null);
   }
 
+  const camposOcultos = (
+    <>
+      <input type="hidden" name={name} value={valorFinal ?? ""} />
+      <input type="hidden" name={`${name}_anterior`} value={valorInicial ?? ""} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept={TIPOS_ACEITOS.join(",")}
+        className="hidden"
+        onChange={lidarComSelecao}
+      />
+    </>
+  );
+
+  if (compacto) {
+    return (
+      <div className="inline-flex flex-col">
+        <div
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setArrastando(true);
+          }}
+          onDragLeave={() => setArrastando(false)}
+          onDrop={lidarComDrop}
+          role="button"
+          aria-label={label}
+          title={label}
+          className={`relative flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border transition-colors ${
+            arrastando
+              ? "border-[var(--admin-focus)] bg-[var(--admin-surface-hover)]"
+              : "border-dashed border-[var(--admin-border-strong)] hover:bg-[var(--admin-surface-hover)]"
+          }`}
+        >
+          {camposOcultos}
+
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element -- preview de arquivo local (blob:) ou URL do Storage, sem domínio fixo para next/image.
+            <img src={preview} alt="" className="h-full w-full object-contain p-1" />
+          ) : (
+            <ImagePlus className="h-4 w-4 text-[var(--admin-text-secondary)]" strokeWidth={1.75} />
+          )}
+
+          {enviando && (
+            <span className="absolute inset-0 flex items-center justify-center bg-[var(--admin-surface)]/80 text-[9px] font-medium text-[var(--admin-green-text)]">
+              ...
+            </span>
+          )}
+
+          {preview && !enviando && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                remover();
+              }}
+              aria-label="Remover imagem"
+              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--admin-danger)] text-white"
+            >
+              <X className="h-2.5 w-2.5" strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
+
+        {erro && <p className="mt-1 max-w-[6rem] text-[10px] leading-tight text-[var(--admin-danger)]">{erro}</p>}
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-[var(--admin-text)]">
         {label} {obrigatorio && "*"}
       </label>
-
-      <input type="hidden" name={name} value={valorFinal ?? ""} />
-      <input type="hidden" name={`${name}_anterior`} value={valorInicial ?? ""} />
 
       <div
         onClick={() => inputRef.current?.click()}
@@ -126,13 +203,7 @@ export function UploadImagem({ name, valorInicial, pasta, label, obrigatorio, on
             : "border-[var(--admin-border-strong)] hover:bg-[var(--admin-surface-hover)]"
         }`}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept={TIPOS_ACEITOS.join(",")}
-          className="hidden"
-          onChange={lidarComSelecao}
-        />
+        {camposOcultos}
 
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element -- preview de arquivo local (blob:) ou URL do Storage, sem domínio fixo para next/image.

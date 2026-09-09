@@ -1,24 +1,21 @@
 "use client";
 
-import { CaretLeft, CaretRight, Cube } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import type { Categoria } from "@/types/database";
 
-export interface CategoriaFaixa {
-  id: string;
-  nome: string;
-  slug: string;
-}
+type FaixaCategoriasProps = {
+  categorias: Pick<Categoria, "id" | "nome" | "slug" | "imagem_url">[];
+};
 
-// Copiado literalmente de
-// referencia-novo-frontend/src/components/home/CategoriesStrip.tsx (Link
-// do react-router-dom trocado por next/link; dado estático de
-// data/categories.ts trocado pelas categorias reais recebidas via prop).
-// Diferença necessária: "categorias" não tem coluna de imagem no banco
-// (só produtos têm imagem_url) — sem imagem real disponível, cada card usa
-// o ícone Cube como espaço reservado, mesmo padrão de fallback já usado em
-// CartaoProduto/CarrinhoDrawer para produto sem imagem.
-export function FaixaCategorias({ categorias }: { categorias: CategoriaFaixa[] }) {
+// Copiado de referencia-novo-frontend/src/components/home/CategoriesStrip.tsx
+// (Link do react-router-dom trocado por next/link, href trocado pela rota
+// real de filtro — /produtos?categoria=<slug>, não /categoria/<slug>, que
+// não existe neste app). Usa categorias.imagem_url quando cadastrada (ver
+// migração 0020); sem imagem, cai na inicial do nome como fallback, mesmo
+// padrão de FaixaMarcas.
+export function FaixaCategorias({ categorias }: FaixaCategoriasProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -137,7 +134,19 @@ export function FaixaCategorias({ categorias }: { categorias: CategoriaFaixa[] }
                 lg:h-[152px] lg:w-[152px]
               "
             >
-              <Cube size={40} weight="thin" className="text-ink-300" />
+              {categoria.imagem_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- URL do Storage cadastrada pelo admin.
+                <img
+                  src={categoria.imagem_url}
+                  alt={categoria.nome}
+                  loading="lazy"
+                  className="relative z-[1] h-[88%] w-[88%] object-contain"
+                />
+              ) : (
+                <span className="font-display text-4xl font-semibold text-fhezo-700">
+                  {categoria.nome.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
 
             <span

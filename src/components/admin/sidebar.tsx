@@ -17,6 +17,8 @@ import {
   Home,
   Palette,
   PanelBottom,
+  FileText,
+  Search,
   Plug,
   Activity,
   ChevronDown,
@@ -56,6 +58,8 @@ const GRUPOS_NAV: GrupoNav[] = [
       { rotulo: "Home", href: "/admin/conteudo/home", icon: Home },
       { rotulo: "Tema", href: "/admin/conteudo/tema", icon: Palette },
       { rotulo: "Footer", href: "/admin/conteudo/footer", icon: PanelBottom },
+      { rotulo: "Páginas", href: "/admin/conteudo/paginas", icon: FileText },
+      { rotulo: "SEO", href: "/admin/conteudo/seo", icon: Search },
     ],
   },
   {

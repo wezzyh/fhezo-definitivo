@@ -20,10 +20,10 @@ export async function SecaoCategoriasDestaque({ secao }: { secao: TipoSecaoCateg
   const supabase = await criarClienteSupabaseServidor();
   const { data: categorias } = await supabase
     .from("categorias")
-    .select("id, nome, slug")
+    .select("id, nome, slug, imagem_url")
     .in("id", secao.categoria_ids)
     .eq("ativo", true)
-    .returns<Pick<Categoria, "id" | "nome" | "slug">[]>();
+    .returns<Pick<Categoria, "id" | "nome" | "slug" | "imagem_url">[]>();
 
   if (!categorias || categorias.length === 0) return null;
 
@@ -38,28 +38,74 @@ export async function SecaoCategoriasDestaque({ secao }: { secao: TipoSecaoCateg
   );
 }
 
+export async function SecaoCategoriasAutomaticas() {
+  const supabase = await criarClienteSupabaseServidor();
+  const { data: categorias } = await supabase
+    .from("categorias")
+    .select("id, nome, slug, imagem_url")
+    .eq("ativo", true)
+    .is("categoria_pai_id", null)
+    .order("ordem")
+    .order("nome")
+    .returns<Pick<Categoria, "id" | "nome" | "slug" | "imagem_url">[]>();
+
+  if (!categorias || categorias.length === 0) return null;
+
+  return <FaixaCategorias categorias={categorias} />;
+}
+
+/**
+ * Busca os produtos de uma seção "mais_vendidos" — via a função pública
+ * produtos_mais_vendidos (SECURITY DEFINER, ver migration 0025), que
+ * agrega pedido_itens/pedidos sem expor nenhum dado de cliente/pedido a
+ * "anon". Preserva a ordem por quantidade vendida (desc).
+ */
+async function buscarProdutosMaisVendidos(
+  supabase: Awaited<ReturnType<typeof criarClienteSupabaseServidor>>,
+  limite: number,
+): Promise<Produto[]> {
+  const { data: maisVendidosBruto } = await supabase.rpc("produtos_mais_vendidos", { p_limite: limite });
+  const maisVendidos = (maisVendidosBruto ?? []) as { produto_id: string; total_vendido: number }[];
+  const ids = maisVendidos.map((linha) => linha.produto_id);
+  if (ids.length === 0) return [];
+
+  const { data: produtos } = await supabase
+    .from("produtos")
+    .select("*")
+    .in("id", ids)
+    .eq("ativo", true)
+    .returns<Produto[]>();
+
+  return ids
+    .map((id) => produtos?.find((produto) => produto.id === id))
+    .filter((produto): produto is Produto => Boolean(produto));
+}
+
 export async function SecaoProdutosDestaque({ secao }: { secao: TipoSecaoProdutosDestaque }) {
   const supabase = await criarClienteSupabaseServidor();
 
-  let query = supabase.from("produtos").select("*").eq("ativo", true);
+  let produtosOrdenados: Produto[];
 
-  if (secao.modo === "manual") {
+  if (secao.modo === "mais_vendidos") {
+    produtosOrdenados = await buscarProdutosMaisVendidos(supabase, secao.limite);
+  } else if (secao.modo === "manual") {
     if (secao.produto_ids.length === 0) return null;
-    query = query.in("id", secao.produto_ids);
+    const { data: produtos } = await supabase
+      .from("produtos")
+      .select("*")
+      .eq("ativo", true)
+      .in("id", secao.produto_ids)
+      .returns<Produto[]>();
+    produtosOrdenados = secao.produto_ids
+      .map((id) => produtos?.find((produto) => produto.id === id))
+      .filter((produto): produto is Produto => Boolean(produto));
   } else {
+    let query = supabase.from("produtos").select("*").eq("ativo", true);
     if (secao.categoria_id) query = query.eq("categoria_id", secao.categoria_id);
     query = query.order("created_at", { ascending: false }).limit(secao.limite);
+    const { data: produtos } = await query.returns<Produto[]>();
+    produtosOrdenados = produtos ?? [];
   }
-
-  const { data: produtos } = await query.returns<Produto[]>();
-  if (!produtos || produtos.length === 0) return null;
-
-  const produtosOrdenados =
-    secao.modo === "manual"
-      ? secao.produto_ids
-          .map((id) => produtos.find((produto) => produto.id === id))
-          .filter((produto): produto is NonNullable<typeof produto> => Boolean(produto))
-      : produtos;
 
   if (produtosOrdenados.length === 0) return null;
 

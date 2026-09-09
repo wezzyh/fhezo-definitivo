@@ -9,25 +9,37 @@ import {
   YoutubeLogo,
 } from "@phosphor-icons/react/ssr";
 import Link from "next/link";
-import { obterArvoreCategoriasPublica } from "@/lib/conteudo/consultas";
+import { obterArvoreCategoriasPublica, obterMenuPublicado, obterMapaSlugsCategorias } from "@/lib/conteudo/consultas";
+import { resolverHrefItemMenu } from "@/lib/conteudo/resolver-href-menu";
 import { obterClienteLogado } from "@/lib/clientes/sessao";
 import { CONTATO_FIXO } from "@/lib/conteudo/contato-fixo";
 import { BarraPromocional } from "./barra-promocional";
 import { MenuConta } from "@/components/account/menu-conta";
 import { MegaMenuDepartamentos } from "@/components/navigation/mega-menu-departamentos";
 import { IndicadorCarrinho } from "./indicador-carrinho";
+import type { ItemMenu } from "@/lib/conteudo/tipos";
 
 // Copiado literalmente de
 // referencia-novo-frontend/src/components/layout/Header.tsx. Diferenças
 // apenas onde a referência usava dado mockado:
-// - "categories" (lista fixa) e o mega menu → árvore real de categorias
-//   (categoria_pai_id), via obterArvoreCategoriasPublica.
+// - "Departamentos" (MegaMenuDepartamentos) → árvore real de categorias
+//   (categoria_pai_id), via obterArvoreCategoriasPublica — 100% automático,
+//   sem curadoria manual.
+// - Barra de links ao lado de "Departamentos" → conteudo_site tipo "menu",
+//   editável em /admin/conteudo/menu (obterMenuPublicado + resolverHrefItemMenu,
+//   mesma resolução de href já usada antes em nav.tsx) — curadoria manual do
+//   admin (rótulo, categoria/link livre, submenu), diferente do mega menu.
 // - Contato/redes sociais: sem dado real cadastrado no projeto ainda —
-//   mantidos os valores literais da referência (decisão do usuário).
+//   mantidos os valores literais da referência (CONTATO_FIXO), decisão do usuário.
 // - Busca: continua um <form action="/produtos" method="get"> real (sem
 //   lógica nova), só restilizado com as classes escuras da referência.
 export async function Header() {
-  const [arvoreCategorias, logado] = await Promise.all([obterArvoreCategoriasPublica(), obterClienteLogado()]);
+  const [arvoreCategorias, dadosMenu, mapaSlugs, logado] = await Promise.all([
+    obterArvoreCategoriasPublica(),
+    obterMenuPublicado(),
+    obterMapaSlugsCategorias(),
+    obterClienteLogado(),
+  ]);
   const clienteMenu = logado?.cliente ? { primeiroNome: logado.cliente.nome.split(" ")[0] } : null;
 
   return (
@@ -191,29 +203,86 @@ export async function Header() {
                 no-scrollbar
               "
             >
-              {arvoreCategorias.map((categoria) => (
-                <Link
-                  key={categoria.id}
-                  href={categoria.href}
-                  className="
-                    shrink-0
-                    font-display
-                    text-[13px]
-                    font-semibold
-                    uppercase
-                    tracking-[.01em]
-                    text-ink-100
-                    transition-colors
-                    hover:text-fhezo-400
-                  "
-                >
-                  {categoria.label}
-                </Link>
+              {dadosMenu.itens.map((item) => (
+                <ItemMenuTopo key={item.id} item={item} mapaSlugs={mapaSlugs} />
               ))}
             </div>
           </div>
         </nav>
       </div>
     </header>
+  );
+}
+
+// Item da barra de menu ao lado de "Departamentos" — vem de conteudo_site
+// tipo "menu" (editável em /admin/conteudo/menu). Desenha só 1 nível de
+// dropdown (mesma limitação que já existia em nav.tsx): itens netos
+// existem no dado mas aparecem achatados dentro do dropdown do pai.
+function ItemMenuTopo({ item, mapaSlugs }: { item: ItemMenu; mapaSlugs: Record<string, string> }) {
+  const href = resolverHrefItemMenu(item, mapaSlugs);
+  const temFilhos = item.filhos.length > 0;
+
+  return (
+    <div className="group relative shrink-0">
+      <Link
+        href={href}
+        className="
+          flex items-center
+          font-display
+          text-[13px]
+          font-semibold
+          uppercase
+          tracking-[.01em]
+          text-ink-100
+          transition-colors
+          hover:text-fhezo-400
+        "
+      >
+        {item.rotulo}
+      </Link>
+
+      {temFilhos && (
+        <div
+          className="
+            invisible absolute left-0 top-full z-[150]
+            min-w-[210px]
+            translate-y-[3px]
+            rounded-[12px]
+            bg-[#151821]
+            p-2
+            pt-[10px]
+            opacity-0
+            shadow-[0_18px_50px_rgba(0,0,0,.28)]
+            transition
+            duration-150
+            group-hover:visible
+            group-hover:translate-y-0
+            group-hover:opacity-100
+          "
+        >
+          {item.filhos.map((filho) => (
+            <Link
+              key={filho.id}
+              href={resolverHrefItemMenu(filho, mapaSlugs)}
+              className="
+                flex h-9 items-center
+                rounded-[8px]
+                px-3
+                text-[13px]
+                normal-case
+                tracking-normal
+                text-[#c2c6cd]
+                transition-colors
+                duration-150
+                hover:bg-[#1c212a]
+                hover:text-white
+              "
+            >
+              {filho.rotulo}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

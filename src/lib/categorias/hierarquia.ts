@@ -24,7 +24,7 @@ export function ordenarCategoriasComHierarquia(categorias: Categoria[]): Categor
     }
   }
   for (const lista of filhosPorPai.values()) {
-    lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    lista.sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
   }
 
   const resultado: CategoriaComProfundidade[] = [];

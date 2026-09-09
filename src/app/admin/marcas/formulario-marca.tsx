@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UploadImagem } from "@/components/admin/upload-imagem";
 import { useFecharModalDeRota } from "@/components/admin/modal-de-rota";
 import type { EstadoFormularioMarca } from "./actions";
 import type { Marca } from "@/types/database";
@@ -30,6 +31,13 @@ export function FormularioMarca({ marca, action, textoBotao }: FormularioMarcaPr
         </label>
         <Input id="nome" name="nome" defaultValue={marca?.nome} required />
       </div>
+
+      <UploadImagem
+        name="imagem_url"
+        valorInicial={marca?.imagem_url ?? null}
+        pasta="marcas"
+        label='Imagem (usada em "Compre por marca" na home)'
+      />
 
       <div className="flex items-center gap-2">
         <input

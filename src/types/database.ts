@@ -51,11 +51,25 @@ export interface Produto {
   created_at: string;
 }
 
+/** Uma imagem da galeria de um produto (tabela produto_imagens). "capa" (no máximo 1 por produto) é a que sincroniza com produtos.imagem_url. */
+export interface ProdutoImagem {
+  id: string;
+  produto_id: string;
+  url: string;
+  posicao: number;
+  capa: boolean;
+  created_at: string;
+}
+
 /** Marca de um produto — entidade própria (não texto livre). */
 export interface Marca {
   id: string;
   nome: string;
   ativo: boolean;
+  /** URL pública da imagem exibida no círculo de "Compre por marca". Null = marca não aparece nessa seção. */
+  imagem_url: string | null;
+  /** Ordem manual — ver botões ▲▼ em /admin/marcas. */
+  ordem: number;
   created_at: string;
 }
 
@@ -67,6 +81,10 @@ export interface Categoria {
   /** Categoria-mãe, para subcategorias (ex.: Rolamentos > Rolamentos Rígidos). `null` = categoria de topo. */
   categoria_pai_id: string | null;
   ativo: boolean;
+  /** URL pública da imagem exibida no círculo da faixa de categorias. Null = fallback (letra inicial). */
+  imagem_url: string | null;
+  /** Ordem manual entre irmãs (mesma categoria_pai_id) — ver botões ▲▼ em /admin/categorias. */
+  ordem: number;
   created_at: string;
 }
 
@@ -230,7 +248,7 @@ export interface Integracao {
   updated_at: string;
 }
 
-export type TipoConteudoSite = "menu" | "home" | "tema" | "footer";
+export type TipoConteudoSite = "menu" | "home" | "tema" | "footer" | "seo";
 
 /**
  * Conteúdo do site versionado (menu, home, tema), editável pelo admin sem
@@ -263,4 +281,23 @@ export interface Banner {
   publicado: boolean;
   created_at: string;
   created_by: string | null;
+}
+
+/**
+ * Página institucional de texto simples (Sobre nós, Política de
+ * privacidade, etc.), servida em /institucional/<slug>. Não é versionada
+ * como conteudo_site — é uma lista de registros independentes, editada
+ * diretamente em /admin/conteudo/paginas.
+ */
+export interface PaginaInstitucional {
+  id: string;
+  slug: string;
+  titulo: string;
+  /** Texto simples — parágrafos separados por linha em branco, sem HTML/Markdown. */
+  corpo: string;
+  seo_titulo: string | null;
+  seo_descricao: string | null;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
 }

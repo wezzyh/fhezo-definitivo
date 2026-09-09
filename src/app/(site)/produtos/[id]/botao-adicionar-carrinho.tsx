@@ -23,7 +23,15 @@ export function BotaoAdicionarCarrinho(props: BotaoAdicionarCarrinhoProps) {
   const [adicionado, setAdicionado] = useState(false);
 
   if (props.estoque <= 0) {
-    return <p className="text-sm font-medium text-ink-500">Produto sem estoque no momento.</p>;
+    return (
+      <button
+        type="button"
+        disabled
+        className="flex h-[54px] w-full cursor-not-allowed items-center justify-center gap-3 rounded-fhezo bg-ink-200 px-5 font-display text-[16px] font-semibold text-ink-500"
+      >
+        Produto não disponível
+      </button>
+    );
   }
 
   function lidarComClique() {

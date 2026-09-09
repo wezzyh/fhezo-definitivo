@@ -5,7 +5,7 @@ import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 const BUCKET = "admin-imagens";
 const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5 MB
 const TIPOS_ACEITOS = new Set(["image/jpeg", "image/png", "image/webp"]);
-const PASTAS_PERMITIDAS = new Set(["produtos", "banners", "footer-pagamentos", "footer-selos"]);
+const PASTAS_PERMITIDAS = new Set(["produtos", "banners", "footer-pagamentos", "footer-selos", "categorias", "marcas"]);
 
 export type ResultadoUploadImagem = { sucesso: true; url: string } | { sucesso: false; erro: string };
 
