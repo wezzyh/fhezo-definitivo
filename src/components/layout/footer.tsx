@@ -299,16 +299,16 @@ export async function Footer() {
                   flex
                   flex-wrap
                   items-center
-                  gap-x-3 gap-y-3
+                  gap-x-[0px] gap-y-[0px]
                 "
               >
                 {[...dadosFooter.formas_pagamento].sort((a, b) => a.ordem - b.ordem).map((metodo: ImagemFooter) => (
-                  <div key={metodo.id} className="relative h-[35px] w-[58px]">
+                  <div key={metodo.id} className="relative h-[28px] w-[42px]">
                     <Image
                       src={metodo.imagem_url}
                       alt={metodo.alt}
                       fill
-                      sizes="58px"
+                      sizes="42px"
                       className="
                         object-contain
                         opacity-75
