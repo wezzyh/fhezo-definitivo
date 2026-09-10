@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
 import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
+import { obterUrlBaseSite } from "@/lib/url-site";
 import type { Cliente, TipoPessoa } from "@/types/database";
 
 export interface EstadoFormularioCadastro {
@@ -30,7 +31,19 @@ export async function cadastrarCliente(
   }
 
   const supabase = await criarClienteSupabaseServidor();
-  const { data, error } = await supabase.auth.signUp({ email, password: senha });
+  const urlBase = await obterUrlBaseSite();
+
+  // emailRedirectTo manda o link de confirmação para ESTE site (rota
+  // /auth/confirm, que troca o token por sessão) em vez de para a "Site
+  // URL" genérica configurada no painel do Supabase. Sem isso, quem
+  // confirma o e-mail cai na home sem sessão nenhuma e parece que nada
+  // aconteceu. O destino precisa estar liberado em Supabase >
+  // Authentication > URL Configuration > Redirect URLs.
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: senha,
+    options: { emailRedirectTo: `${urlBase}/auth/confirm?next=${encodeURIComponent(proximaUrl)}` },
+  });
 
   if (error) {
     return { erro: error.message === "User already registered" ? "Já existe uma conta com este e-mail." : error.message };
@@ -74,4 +87,41 @@ export async function cadastrarCliente(
   }
 
   redirect(proximaUrl.startsWith("/") ? proximaUrl : "/conta");
+}
+
+/**
+ * Reenvia o e-mail de confirmação de cadastro. Existe porque o primeiro
+ * e-mail se perde com frequência (spam, digitação errada percebida depois,
+ * limite de envio do provedor) e, sem isto, a única saída seria o admin
+ * confirmar a conta na mão pelo painel do Supabase.
+ *
+ * Não distingue "e-mail não cadastrado" de "e-mail já confirmado": responde
+ * a mesma coisa nos dois casos, pelo mesmo motivo de
+ * pedirRedefinicaoSenha — não entregar quem tem conta para quem ficar
+ * testando endereços.
+ */
+export async function reenviarConfirmacaoEmail(
+  _estadoAnterior: EstadoFormularioCadastro,
+  formData: FormData,
+): Promise<EstadoFormularioCadastro> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { erro: "Informe o e-mail para reenviar a confirmação." };
+  }
+
+  const supabase = await criarClienteSupabaseServidor();
+  const urlBase = await obterUrlBaseSite();
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: `${urlBase}/auth/confirm?next=${encodeURIComponent("/conta")}` },
+  });
+
+  if (error) {
+    return { erro: "Não foi possível reenviar agora. Tente de novo em alguns minutos." };
+  }
+
+  return { mensagemSucesso: "Reenviamos o e-mail de confirmação. Confira sua caixa de entrada e o spam." };
 }

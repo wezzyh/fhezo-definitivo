@@ -120,10 +120,14 @@ function ListaImagens({ titulo, descricao, pasta, itens, onAlterar }: ListaImage
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 flex max-w-md flex-col gap-2">
         {itens.map((item, indice) => (
-          <div key={item.id} className="rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-3">
+          <div
+            key={item.id}
+            className="flex items-center gap-3 rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface)] p-2"
+          >
             <UploadImagem
+              compacto
               name={`imagem_${item.id}`}
               valorInicial={item.imagem_url || null}
               pasta={pasta}
@@ -131,23 +135,19 @@ function ListaImagens({ titulo, descricao, pasta, itens, onAlterar }: ListaImage
               onChange={(url) => atualizar(item.id, { imagem_url: url ?? "" })}
             />
 
-            <div className="mt-2">
-              <label className="mb-1 block text-xs font-medium text-[var(--admin-text-secondary)]">
-                Legenda (texto alternativo)
-              </label>
-              <Input
-                value={item.alt}
-                onChange={(e) => atualizar(item.id, { alt: e.target.value })}
-                placeholder="Ex.: Visa"
-              />
-            </div>
+            <Input
+              value={item.alt}
+              onChange={(e) => atualizar(item.id, { alt: e.target.value })}
+              placeholder="Legenda (ex.: Visa)"
+              className="h-9 flex-1"
+            />
 
-            <div className="mt-2 flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
                 onClick={() => mover(indice, -1)}
                 disabled={indice === 0}
-                className="px-2 text-sm text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
+                className="px-1 text-sm text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
               >
                 ▲
               </button>
@@ -155,14 +155,14 @@ function ListaImagens({ titulo, descricao, pasta, itens, onAlterar }: ListaImage
                 type="button"
                 onClick={() => mover(indice, 1)}
                 disabled={indice === itens.length - 1}
-                className="px-2 text-sm text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
+                className="px-1 text-sm text-[var(--admin-text-secondary)] hover:text-[var(--admin-text)] disabled:opacity-30"
               >
                 ▼
               </button>
               <button
                 type="button"
                 onClick={() => remover(item.id)}
-                className="ml-auto text-xs font-medium text-[var(--admin-danger)] hover:underline"
+                className="ml-1 text-xs font-medium text-[var(--admin-danger)] hover:underline"
               >
                 Remover
               </button>

@@ -304,7 +304,7 @@ export async function Footer() {
                   flex
                   flex-wrap
                   items-center
-                  gap-x-5 gap-y-3
+                  gap-x-3 gap-y-3
                 "
               >
                 {[...dadosFooter.formas_pagamento].sort((a, b) => a.ordem - b.ordem).map((metodo: ImagemFooter) => (
@@ -315,7 +315,7 @@ export async function Footer() {
                     alt={metodo.alt}
                     loading="lazy"
                     className="
-                      h-[22px]
+                      h-[35px]
                       w-auto
                       max-w-[58px]
                       object-contain

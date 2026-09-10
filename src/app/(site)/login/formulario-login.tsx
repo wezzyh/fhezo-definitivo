@@ -23,9 +23,14 @@ export function FormularioLogin({ proximo }: { proximo: string }) {
       </div>
 
       <div>
-        <label htmlFor="senha" className="mb-1 block text-sm font-medium text-ink">
-          Senha
-        </label>
+        <div className="mb-1 flex items-baseline justify-between gap-3">
+          <label htmlFor="senha" className="block text-sm font-medium text-ink">
+            Senha
+          </label>
+          <Link href="/esqueci-senha" className="text-xs font-medium text-brand-green hover:underline">
+            Esqueci minha senha
+          </Link>
+        </div>
         <Input id="senha" name="senha" type="password" autoComplete="current-password" required />
       </div>
 
