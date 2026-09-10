@@ -51,7 +51,20 @@ export async function SecaoCategoriasAutomaticas() {
 
   if (!categorias || categorias.length === 0) return null;
 
-  return <FaixaCategorias categorias={categorias} />;
+  // fhezo-container aqui é obrigatório, não cosmético: FaixaCategorias
+  // posiciona as setas de scroll com left-0/right-0 + -translate-x-1/2 /
+  // translate-x-1/2 relativas ao pai — sem um container limitando a
+  // largura, o pai vira a viewport inteira (100vw) e essas setas ficam
+  // meio fora da tela, criando overflow horizontal na página inteira (a
+  // barra de rolagem horizontal reportada era esse bug: ~24px de
+  // conteúdo vazando pra fora do viewport). SecaoCategoriasDestaque (o
+  // outro caminho de renderização de FaixaCategorias) já envolve com
+  // fhezo-container por causa do <h2>; este aqui só não tinha.
+  return (
+    <div className="fhezo-container">
+      <FaixaCategorias categorias={categorias} />
+    </div>
+  );
 }
 
 /**
@@ -110,25 +123,34 @@ export async function SecaoProdutosDestaque({ secao }: { secao: TipoSecaoProduto
   if (produtosOrdenados.length === 0) return null;
 
   return (
-    <section className="mx-auto w-full max-w-store px-4 py-16 sm:px-5">
-      <div className="relative mb-7 border-b border-ink-200 pb-4 text-center">
-        <h2 className="font-display text-[29px] font-semibold leading-tight text-ink-900">{secao.titulo}</h2>
-        {secao.subtitulo && (
-          <span className="mt-2 block font-display text-xs font-semibold uppercase tracking-[.16em] text-fhezo-600">
-            {secao.subtitulo}
-          </span>
-        )}
-        <Link
-          href="/produtos"
-          className="absolute right-0 top-1/2 hidden -translate-y-1/2 text-sm font-semibold text-fhezo-700 underline md:block"
-        >
-          Ver todos os produtos
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-        {produtosOrdenados.map((produto) => (
-          <CartaoProduto key={produto.id} produto={produto} />
-        ))}
+    <section className="py-16">
+      {/* fhezo-container (não max-w-store) para alinhar com as demais
+          seções da home (categorias/marcas) — max-w-store soma uma
+          margem própria (px-4/sm:px-5) em cima do próprio max-width,
+          deixando esta seção ~20px mais recuada que as outras em telas
+          largas. Usado só aqui: produtos/page.tsx e produtos/[id]/page.tsx
+          continuam com max-w-store, cada um sozinho na própria rota, sem
+          nada ao lado para desalinhar. */}
+      <div className="fhezo-container">
+        <div className="relative mb-7 border-b border-ink-200 pb-4 text-center">
+          <h2 className="font-display text-[29px] font-semibold leading-tight text-ink-900">{secao.titulo}</h2>
+          {secao.subtitulo && (
+            <span className="mt-2 block font-display text-xs font-semibold uppercase tracking-[.16em] text-fhezo-600">
+              {secao.subtitulo}
+            </span>
+          )}
+          <Link
+            href="/produtos"
+            className="absolute right-0 top-1/2 hidden -translate-y-1/2 text-sm font-semibold text-fhezo-700 underline md:block"
+          >
+            Ver todos os produtos
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {produtosOrdenados.map((produto) => (
+            <CartaoProduto key={produto.id} produto={produto} />
+          ))}
+        </div>
       </div>
     </section>
   );

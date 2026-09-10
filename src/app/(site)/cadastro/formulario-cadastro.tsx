@@ -4,16 +4,43 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cadastrarCliente, type EstadoFormularioCadastro } from "./actions";
+import { cadastrarCliente, reenviarConfirmacaoEmail, type EstadoFormularioCadastro } from "./actions";
 
 const estadoInicial: EstadoFormularioCadastro = {};
 
 export function FormularioCadastro({ proximo }: { proximo: string }) {
   const [estado, formAction, pendente] = useActionState(cadastrarCliente, estadoInicial);
+  const [estadoReenvio, acaoReenvio, reenviando] = useActionState(reenviarConfirmacaoEmail, estadoInicial);
   const [tipo, setTipo] = useState<"PF" | "PJ">("PF");
+  // Controlado só para que a tela de "confirme seu e-mail" saiba para qual
+  // endereço reenviar — useActionState não devolve o FormData enviado.
+  const [email, setEmail] = useState("");
 
   if (estado.mensagemSucesso) {
-    return <p className="text-sm font-medium text-brand-green">{estado.mensagemSucesso}</p>;
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-brand-green">{estado.mensagemSucesso}</p>
+        <p className="text-sm text-muted">
+          Enviamos o link para <strong className="text-ink">{email}</strong>. Confira também a caixa de spam.
+        </p>
+
+        <form action={acaoReenvio}>
+          <input type="hidden" name="email" value={email} />
+          <Button type="submit" variant="outline" disabled={reenviando}>
+            {reenviando ? "Reenviando..." : "Reenviar e-mail de confirmação"}
+          </Button>
+        </form>
+
+        {estadoReenvio.mensagemSucesso && (
+          <p className="text-sm text-brand-green">{estadoReenvio.mensagemSucesso}</p>
+        )}
+        {estadoReenvio.erro && <p className="text-sm text-red-600">{estadoReenvio.erro}</p>}
+
+        <Link href="/login" className="inline-block text-sm font-medium text-brand-green hover:underline">
+          Já confirmei — ir para o login
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -56,7 +83,15 @@ export function FormularioCadastro({ proximo }: { proximo: string }) {
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
           E-mail
         </label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
       </div>
 
       <div>

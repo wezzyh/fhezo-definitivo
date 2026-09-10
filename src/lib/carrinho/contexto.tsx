@@ -20,6 +20,13 @@ import {
 
 const CHAVE_LOCALSTORAGE = "fhezo:carrinho";
 
+/** Disparado a cada adicionarItem, para o ToastCarrinho mostrar "produto adicionado". `id` incremental garante um novo toast mesmo ao adicionar o mesmo produto duas vezes seguidas. */
+export interface NotificacaoAdicaoCarrinho {
+  id: number;
+  item: NovoItemCarrinho;
+  quantidadeAdicionada: number;
+}
+
 interface ContextoCarrinhoValor {
   itens: ItemCarrinho[];
   quantidadeTotal: number;
@@ -32,6 +39,9 @@ interface ContextoCarrinhoValor {
   aberto: boolean;
   abrirCarrinho: () => void;
   fecharCarrinho: () => void;
+  /** null = nenhum toast de "adicionado ao carrinho" pendente. Ver ToastCarrinho. */
+  notificacaoAdicao: NotificacaoAdicaoCarrinho | null;
+  fecharNotificacaoAdicao: () => void;
 }
 
 const CarrinhoContext = createContext<ContextoCarrinhoValor | null>(null);
@@ -40,6 +50,8 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
   const [estado, dispatch] = useReducer(carrinhoReducer, estadoInicialCarrinho);
   const hidratado = useRef(false);
   const [aberto, setAberto] = useState(false);
+  const [notificacaoAdicao, setNotificacaoAdicao] = useState<NotificacaoAdicaoCarrinho | null>(null);
+  const proximoIdNotificacao = useRef(0);
 
   // Carrega o carrinho salvo no localStorage assim que o componente monta no
   // navegador. Só roda no cliente — o servidor sempre parte de um carrinho
@@ -71,7 +83,11 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
 
   const adicionarItem = useCallback((item: NovoItemCarrinho, quantidade = 1) => {
     dispatch({ tipo: "ADICIONAR", item, quantidade });
+    proximoIdNotificacao.current += 1;
+    setNotificacaoAdicao({ id: proximoIdNotificacao.current, item, quantidadeAdicionada: quantidade });
   }, []);
+
+  const fecharNotificacaoAdicao = useCallback(() => setNotificacaoAdicao(null), []);
 
   const removerItem = useCallback((produtoId: string) => {
     dispatch({ tipo: "REMOVER", produtoId });
@@ -110,6 +126,8 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
       aberto,
       abrirCarrinho,
       fecharCarrinho,
+      notificacaoAdicao,
+      fecharNotificacaoAdicao,
     }),
     [
       estado.itens,
@@ -122,6 +140,8 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
       aberto,
       abrirCarrinho,
       fecharCarrinho,
+      notificacaoAdicao,
+      fecharNotificacaoAdicao,
     ],
   );
 

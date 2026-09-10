@@ -14,10 +14,13 @@ interface MenuContaProps {
 // referencia-novo-frontend/src/components/account/AccountMenu.tsx (Link
 // do react-router-dom trocado por next/link), mas agora conectado à sessão
 // real de cliente (ver obterClienteLogado, passado pelo Header) em vez do
-// estado decorativo de "visitante" fixo da referência. Deslogado: vira um
-// link direto pra /login (sem dropdown — não há nada de sessão pra
-// mostrar). "Meus desejos" da referência foi removido: não existe recurso
-// de lista de desejos no projeto, manter o botão seria um item morto.
+// estado decorativo de "visitante" fixo da referência. Deslogado: um único
+// link pra /login (sem dropdown — não há sessão pra mostrar), com o mesmo
+// layout de duas linhas do estado logado ("Olá, {nome}" / "Minha conta")
+// — aqui "Olá, visitante" / "Entrar/Cadastrar", só a segunda linha juntando
+// os dois links num só, já que login e cadastro se linkam um ao outro.
+// "Meus desejos" da referência foi removido: não existe recurso de lista
+// de desejos no projeto, manter o botão seria um item morto.
 export function MenuConta({ cliente }: MenuContaProps) {
   const [open, setOpen] = useState(false);
 
@@ -36,7 +39,9 @@ export function MenuConta({ cliente }: MenuContaProps) {
         <div className="hidden xl:block text-left leading-tight">
           <span className="block text-[12px] text-ink-300">Olá, visitante</span>
 
-          <span className="font-semibold text-[14px]">Entrar</span>
+          <span className="font-semibold text-[14px]">
+            Entrar<span className="text-ink-300">/</span>Cadastrar
+          </span>
         </div>
       </Link>
     );

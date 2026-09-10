@@ -4,6 +4,68 @@ Documento de contexto pra qualquer IA (ou humano) que for mexer neste projeto de
 
 Verificado contra o banco de produção real em 2026-09-03 (não é só o que os arquivos de migration *deveriam* fazer — várias vezes nesta conversa a suposição "ainda não rodou" estava errada; sempre vale reconferir com uma query antes de assumir).
 
+## ⚠️ Incidente do rebase de 2026-09-09 (leia antes de confiar no histórico)
+
+Em 2026-09-09 um `git pull --rebase origin main` juntou o trabalho local desta
+máquina (commit `be8e0ab`, feito ao longo do dia 09/09) com commits vindos da
+outra máquina (`c2b622a`, `29e72c6`, de 06/09). O rebase teve **dois conflitos**
+e a resolução deles descartou silenciosamente parte do trabalho de 09/09,
+substituindo-o pela versão mais antiga de 06/09. Os commits resultantes
+(`72e0409`..`42a7e83`) parecem íntegros no `git log` — a perda só aparece
+comparando com o commit pré-rebase.
+
+**Como auditar isso de novo, se desconfiar de sumiço:** o commit pré-rebase
+continua acessível como dangling object. Use
+
+```
+git range-diff 240838e..be8e0ab 29e72c6..42a7e83     # commit a commit
+git diff be8e0ab HEAD --stat -- src/ supabase/       # o que mudou de fato
+```
+
+Se `be8e0ab` já tiver sido coletado pelo gc, procure em `git reflog` /
+`git fsck --lost-found`.
+
+**O que foi perdido e já está restaurado (2026-09-10):**
+
+- `src/app/admin/conteudo/footer/editor-footer.tsx` — o layout compacto (lista
+  vertical `flex max-w-md flex-col`, `UploadImagem compacto`, legenda inline)
+  tinha virado um grid de 3 colunas com dropzones gigantes. Restaurado do
+  `be8e0ab`.
+- `src/components/layout/footer.tsx` — ícones de forma de pagamento voltaram de
+  `h-[35px]`/`gap-x-3` pra `h-[22px]`/`gap-x-5`. Restaurado.
+- `src/lib/conteudo/tipos.ts` — `ImagemFooter` e `DadosFooter` ficaram
+  **declarados duas vezes**, coladas uma embaixo da outra. Isso NÃO quebra o
+  `tsc` (interfaces TS com membros idênticos fazem declaration merging), então
+  passou despercebido. Bloco duplicado removido.
+
+**O que NÃO foi perdido** (conferido, não presumido): toda a integração com o
+Bling (`72e0409`, `2cb59b7`, `890ca4d`), lupa de zoom e lightbox da galeria
+(`2733db1`, `d9d2cb6`), e tudo que veio da outra máquina. A remoção de
+`src/app/(site)/carrinho/page.tsx` é intencional (drawer, Etapa 3).
+
+### Regressão separada, do próprio commit `42a7e83` (não do rebase)
+
+A barra de categorias do topo do header deixou de renderizar `arvoreCategorias`
+(categorias reais, href sempre válido) e passou a renderizar `dadosMenu.itens`
+(CMS, `/admin/conteudo/menu`). O menu publicado tinha hrefs digitados à mão
+(`/rolamentos`, `/mancais`, ...) — **rotas que não existem neste app**, então
+todo clique em categoria virou 404.
+
+Corrigido em 2026-09-10 **no dado, não no código**: publicada a versão 7 do
+`conteudo_site` tipo `menu` (via a própria RPC `publicar_conteudo_site`, então
+o histórico está intacto e dá pra restaurar a v6 pelo admin). Os 8 itens com
+categoria correspondente viraram `tipo: "categoria"` + `categoria_id` — o href
+passa a ser resolvido em runtime pelo slug (`resolverHrefItemMenu`), que é
+exatamente o desenho pretendido e não quebra mais se o slug mudar. "Polias" e
+"Correias" **não existem como categoria** e ficaram apontando pra `/produtos`;
+crie as categorias e religue esses dois itens em `/admin/conteudo/menu` quando
+fizer sentido.
+
+**Lição pro próximo rebase deste repo:** este projeto é editado em duas máquinas
+que divergem com frequência e mexem nos mesmos arquivos de UI. Depois de
+qualquer `pull --rebase` com conflito, rode o `git range-diff` acima antes de
+commitar — o `tsc`/`build` passando não prova que nada sumiu.
+
 ## O que é
 
 E-commerce B2B de componentes industriais (rolamentos, engrenagens, correntes, graxas, ferramentas, parafusos). Next.js 16 (App Router) + Supabase (Postgres + Auth) + Tailwind v4. Um único usuário admin (sem multi-tenant, sem roles ainda — ver TODO espalhado pelo código).
@@ -232,6 +294,125 @@ Testar cada etapa no navegador antes de avançar pra próxima, como nas etapas a
 usuário pediu explicitamente pra parar ao final de cada etapa e mostrar o resultado antes de
 continuar.
 
+## Autenticação de cliente (login no site público)
+
+Estado em 2026-09-10: **código completo e testado ponta a ponta**; falta só
+uma configuração no painel do Supabase (SMTP) para os e-mails saírem — ver
+"O que falta configurar" no fim desta seção.
+
+### Duas sessões, um único Supabase Auth
+
+Admin e cliente usam o MESMO projeto Supabase Auth. Quem é admin é definido
+pela tabela `admins` (migração 0018) e consultado pela função
+`is_admin()` (`security definer`, ignora a RLS de `admins`, que
+propositalmente não tem política nenhuma). Adicionar admin = inserir o
+`auth.users.id` em `admins` pelo SQL Editor.
+
+**`is_admin()` é a única definição de "quem é admin" no projeto** — usada
+tanto pelas políticas de RLS quanto pelo `src/proxy.ts`. Não crie uma
+segunda régua (lista de e-mails no código, variável de ambiente etc.): duas
+definições saem de sincronia.
+
+### `src/proxy.ts` — a trava do /admin
+
+Até 2026-09-10 o middleware só checava `if (!user)`. Como um cliente que se
+cadastra no site também é `authenticated`, **qualquer cliente entrava no
+painel administrativo inteiro** — era exatamente o risco que o comentário
+de abertura da migração 0018 antecipou, mas a parte da aplicação nunca
+tinha sido feita (o `TODO` sobre "mais de um administrador" continuava lá).
+A RLS já impedia esse cliente de ler/gravar qualquer dado interno, mas ele
+enxergava a estrutura do painel.
+
+Agora o middleware chama `is_admin()` e **falha fechado**: erro na chamada
+= acesso negado. Não-admin autenticado é mandado para `/`, exceto em
+`/admin/login`, que segue acessível de propósito (é onde se troca de conta).
+
+Testado de verdade: cliente logado recebe redirect em `/admin`,
+`/admin/clientes` e `/admin/produtos`; admin continua entrando normalmente.
+
+### Telas e rotas
+
+| Rota | O que faz |
+|---|---|
+| `/login` | Entrar. Mostra aviso quando volta de `/auth/confirm` com link inválido (`?erro=link_invalido`). |
+| `/cadastro` | Criar conta. Se o projeto exigir confirmação, mostra a tela "confirme seu e-mail" com botão de **reenviar**. |
+| `/conta` | Dados cadastrais, endereço padrão e histórico de pedidos do próprio cliente. |
+| `/esqueci-senha` | Pede o link de recuperação por e-mail. |
+| `/redefinir-senha` | Define a nova senha (exige a sessão criada pelo link). |
+| `/auth/confirm` | Route Handler que recebe TODO link de e-mail e troca o token por sessão. |
+
+`/auth/confirm` aceita os dois formatos de link de propósito:
+`?token_hash=...&type=...` (template customizado, via `verifyOtp`) e
+`?code=...` (template padrão do Supabase, via `exchangeCodeForSession`).
+Assim o fluxo não quebra se alguém editar ou restaurar um template no
+painel depois. O parâmetro `next` é validado para aceitar só caminho
+interno — nunca vira redirecionamento aberto.
+
+`/esqueci-senha` e o reenvio de confirmação **não distinguem** "e-mail não
+cadastrado" de "e-mail já existe": respondem a mesma coisa nos dois casos,
+de propósito, para não entregar a lista de clientes a quem fique testando
+endereços.
+
+### Como um pedido se liga à conta
+
+Não existe vínculo automático por sessão no checkout — o checkout continua
+identificando o cliente **pelo CPF/CNPJ** (`src/app/(site)/checkout/actions.ts`,
+via service_role). Quem tem conta e usa o mesmo documento cai na mesma
+linha de `clientes` (que tem `auth_user_id`), e o pedido aparece em "Meus
+pedidos" naturalmente. Além disso, `vincularClienteExistentePorEmail`
+(`src/lib/clientes/sessao.ts`) liga a conta a um cadastro de convidado com
+o mesmo e-mail no login e na confirmação — só quando bate com EXATAMENTE
+uma linha sem `auth_user_id`, para nunca misturar identidades.
+
+**Lacuna conhecida:** o checkout não pré-preenche os dados de quem está
+logado. Funciona, mas o cliente redigita tudo.
+
+### Como testar sem SMTP
+
+`generateLink` da Admin API devolve o token **sem disparar e-mail** — é
+como o fluxo de recuperação foi validado aqui. O `hashed_token` que ele
+retorna é exatamente o `{{ .TokenHash }}` do template:
+
+```js
+const { data } = await admin.auth.admin.generateLink({ type: "recovery", email });
+// abrir no navegador:
+// /auth/confirm?token_hash=<data.properties.hashed_token>&type=recovery&next=%2Fredefinir-senha
+```
+
+Cuidado ao testar: o token é de uso único. E se o navegador estiver com
+cookie de uma sessão antiga inválida, limpe antes — isso já causou um
+falso negativo aqui.
+
+### O que falta configurar no painel do Supabase
+
+Nada disso é código; sem isso o cadastro trava em "confirme seu e-mail"
+para sempre, porque o SMTP embutido do Supabase é limitado a poucos envios
+por hora e só entrega para endereços da própria equipe.
+
+1. **Authentication > Emails > SMTP Settings** — ligar SMTP próprio
+   (Resend, SendGrid, Amazon SES). Sem isso, nenhum e-mail chega a cliente
+   de verdade.
+2. **Authentication > URL Configuration** — `Site URL` = domínio de
+   produção; em `Redirect URLs` incluir `https://<domínio>/auth/confirm`,
+   `http://localhost:3000/auth/confirm` e o padrão de preview da Vercel.
+   URL fora dessa lista é ignorada e o usuário cai na Site URL sem sessão.
+3. **Authentication > Emails > Templates** (recomendado, não obrigatório) —
+   trocar `{{ .ConfirmationURL }}` pelo formato `token_hash`:
+
+   - Confirm signup:
+     `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/conta`
+   - Reset password:
+     `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/redefinir-senha`
+
+   Vantagem: o template padrão usa o fluxo PKCE, em que o verificador fica
+   num cookie do navegador que pediu o e-mail — abrir o link no celular
+   depois de pedir no desktop **falha**. O formato `token_hash` não tem
+   essa limitação. Os dois funcionam com `/auth/confirm`.
+
+Enquanto o "Confirm email" estiver ligado (está, hoje) e não houver SMTP,
+dá para liberar uma conta na mão em Authentication > Users > (usuário) >
+Confirm email.
+
 ## Convenções do projeto (siga estas, não as genéricas)
 
 - **Tudo em português**: nomes de função/variável, comentários, mensagens de erro, labels de UI. Nomes de coluna do banco em `snake_case` batem exatamente com os campos TS em `src/types/database.ts` (sem camada de tradução).
@@ -244,13 +425,42 @@ continuar.
 
 ## Lacunas conhecidas (não implementadas, mencionadas ao usuário quando surgiram)
 
-- Módulo de tickets/suporte — não existe, só um placeholder no dashboard.
-- Upload de imagem de verdade (hoje é só campo de URL — não tem bucket de storage configurado).
-- Paginação real em `/admin/pedidos` (hoje é um limite fixo de 200).
-- `eventos_integracao` não tem campo de "resolvido" — contagem do dashboard é uma janela de 7 dias como proxy.
-- Migration 0012 (`conteudo_site`/`banners`, CMS de menu/home/tema/banners) ainda não foi aplicada no banco de produção — ver seção "Conteúdo do site" acima pro SQL e o que fazer antes/depois de rodar.
-- Migration 0013 (`clientes_crm`, CRM B2B) também ainda não foi aplicada no banco de produção. Diferente do CMS, aqui não existe fallback: até rodar, `/admin/clientes` mostra um erro tratado ("relation clientes_crm_resumo does not exist") em vez de lista vazia, e o item "Clientes com ação atrasada" do dashboard aparece como 0 (a consulta falha silenciosamente, `count` vem `null`, tratado como 0 — não trava o dashboard, mas também não avisa que a tabela não existe ainda).
-- Migration 0014 (`tickets`/`ticket_respostas`, módulo de suporte) também ainda não foi aplicada no banco de produção — mesmo comportamento de degradação do item acima (`/admin/tickets` mostra erro tratado, "Tickets pendentes" no dashboard aparece como 0 em vez de avisar que a tabela não existe).
-- Módulo de tickets não tem formulário público — cliente não abre ticket direto no site, só o admin cria manualmente. Se isso for implementado depois, cuidado com RLS: hoje `tickets`/`ticket_respostas` não têm NENHUMA política para `anon`, de propósito.
-- `Nav` só desenha 1 nível de dropdown de submenu — o dado (`ItemMenu.filhos`) suporta árvore de N níveis, mas netos aparecem achatados dentro do dropdown do pai, não em submenu aninhado visualmente.
-- Busca do header (`?busca=` em `/produtos`) continua sem efeito — só o filtro por `?categoria=` (novo, ver seção "Conteúdo do site") foi implementado.
+Revisado em 2026-09-10 **contra o banco de produção real** — vários itens
+desta lista descreviam migrations "ainda não aplicadas" que já estavam
+aplicadas há tempo, e módulos "inexistentes" que já existiam. Se for
+acrescentar um item aqui, confira antes com uma query; esta lista já
+enganou uma vez.
+
+Pendências reais hoje:
+
+- **SMTP do Supabase não configurado** — é o que impede o login de cliente
+  de funcionar de ponta a ponta (ver "O que falta configurar no painel do
+  Supabase" na seção de Autenticação de cliente). O código está pronto e
+  testado.
+- Checkout não pré-preenche os dados de quem está logado — o cliente
+  redigita nome/documento/endereço mesmo tendo conta. O pedido ainda assim
+  se liga à conta pelo CPF/CNPJ.
+- "Polias" e "Correias" existem como item de menu mas **não** como
+  categoria; apontam para `/produtos` até alguém criar as categorias e
+  religar em `/admin/conteudo/menu`.
+- Paginação real só existe em `/admin/produtos`. `/admin/pedidos`
+  (`LIMITE_PEDIDOS = 200`) e `/admin/tickets` (`LIMITE_TICKETS = 300`) são
+  limites fixos.
+- `eventos_integracao` não tem campo de "resolvido" — a contagem do
+  dashboard usa uma janela de 7 dias como proxy.
+- Módulo de tickets não tem formulário público — cliente não abre ticket
+  direto no site, só o admin cria manualmente. Se isso for implementado,
+  cuidado com RLS: `tickets`/`ticket_respostas` não têm NENHUMA política
+  para `anon`, de propósito.
+- `Nav`/mega-menu só desenham 1 nível de dropdown — o dado
+  (`ItemMenu.filhos`, `categoria_pai_id`) suporta N níveis, mas netos
+  aparecem achatados dentro do dropdown do pai. Hoje isso não aparece na
+  loja porque **nenhuma categoria tem subcategoria cadastrada**.
+- Busca do header (`?busca=` em `/produtos`) continua sem efeito — a
+  listagem só filtra por `?categoria=` e `?marca=`.
+- A página 404 é a padrão do Next.js (tela preta, sem header/footer e sem
+  caminho de volta).
+
+Já resolvido, não repetir como lacuna: módulo de tickets, upload de imagem
+com bucket de storage, e as migrations 0012, 0013, 0014, 0015 e 0018 —
+todas **aplicadas** em produção (conferido em 2026-09-10).

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Banner } from "@/types/database";
 import type { DadosBanner } from "@/lib/conteudo/tipos";
@@ -7,12 +8,19 @@ import type { DadosBanner } from "@/lib/conteudo/tipos";
 // <Link> só quando link_url existe), só com altura bem menor (~100px no
 // desktop) porque aqui é uma faixa institucional, não o banner principal.
 // Cadastrada em /admin/conteudo/banners com posicao="faixa_institucional".
+// next/image sem `priority` (ver hero-banner.tsx): abaixo da dobra, então
+// deve continuar de lazy-load, só sem baixar o arquivo bruto do Storage.
 export function FaixaInstitucional({ banner }: { banner: Banner }) {
   const dados = banner.dados as unknown as DadosBanner;
 
   const imagem = (
-    // eslint-disable-next-line @next/next/no-img-element -- URL externa cadastrada pelo admin, sem domínio fixo para next/image.
-    <img src={dados.imagem_url} alt={dados.titulo ?? "Faixa institucional"} className="h-full w-full object-cover object-center" />
+    <Image
+      src={dados.imagem_url}
+      alt={dados.titulo ?? "Faixa institucional"}
+      fill
+      sizes="100vw"
+      className="object-cover object-center"
+    />
   );
 
   return (

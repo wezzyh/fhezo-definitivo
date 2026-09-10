@@ -2,6 +2,12 @@
 
 # dependencies
 /node_modules
+# referencia-novo-frontend/ é um projeto Vite separado (só mock visual, ver
+# AGENTS.md) com node_modules próprio — /node_modules acima só cobre a raiz
+# do repo, por isso precisa de uma entrada explícita pra esse subprojeto
+# (foi assim que referencia-novo-frontend/node_modules/vite/bin/vite.js
+# acabou indo parar no histórico por engano).
+referencia-novo-frontend/node_modules
 /.pnp
 .pnp.*
 .yarn/*

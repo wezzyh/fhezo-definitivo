@@ -31,17 +31,43 @@ export async function proxy(request: NextRequest) {
 
   const ehPaginaDeLogin = request.nextUrl.pathname === "/admin/login";
 
-  // TODO: quando houver mais de um administrador, checar aqui também se
-  // `user` possui a permissão/role de admin, e não apenas se está
-  // autenticado. Hoje isso não é necessário porque existe um único usuário
-  // administrador.
-  if (!user && !ehPaginaDeLogin) {
+  if (!user) {
+    if (ehPaginaDeLogin) return respostaSupabase;
+
     const urlLogin = request.nextUrl.clone();
     urlLogin.pathname = "/admin/login";
     return NextResponse.redirect(urlLogin);
   }
 
-  if (user && ehPaginaDeLogin) {
+  // Estar autenticado NÃO basta para entrar no /admin. Desde que existe
+  // login de cliente no site público (migração 0018), um cliente comum
+  // também é "authenticated" — sem a checagem abaixo, qualquer pessoa que
+  // se cadastrasse em /cadastro entraria no painel administrativo inteiro.
+  // A RLS já impediria esse cliente de LER ou GRAVAR qualquer dado interno
+  // (todas as políticas "to authenticated" exigem is_admin() desde a 0018),
+  // mas ele ainda enxergaria a estrutura do painel — telas, menus e
+  // formulários — o que não deve acontecer.
+  //
+  // is_admin() é a mesma função que as políticas de RLS usam, então não
+  // existe uma segunda definição de "quem é admin" para sair do ar de
+  // sincronia: a lista é a tabela "admins". Em caso de erro na chamada
+  // (rede, função ausente), o acesso é NEGADO de propósito — falhar
+  // fechado é o comportamento certo aqui.
+  const { data: ehAdmin, error: erroAdmin } = await supabase.rpc("is_admin");
+
+  if (erroAdmin || ehAdmin !== true) {
+    // Na tela de login o acesso é liberado mesmo para não-admin: é
+    // justamente onde um cliente logado por engano troca para a conta de
+    // administrador (o formulário faz signIn, substituindo a sessão).
+    if (ehPaginaDeLogin) return respostaSupabase;
+
+    const urlInicio = request.nextUrl.clone();
+    urlInicio.pathname = "/";
+    urlInicio.search = "";
+    return NextResponse.redirect(urlInicio);
+  }
+
+  if (ehPaginaDeLogin) {
     const urlAdmin = request.nextUrl.clone();
     urlAdmin.pathname = "/admin";
     return NextResponse.redirect(urlAdmin);

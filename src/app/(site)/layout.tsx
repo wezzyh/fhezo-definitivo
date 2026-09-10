@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { CarrinhoDrawer } from "@/components/layout/carrinho-drawer";
+import { ToastCarrinho } from "@/components/layout/toast-carrinho";
 import { CarrinhoProvider } from "@/lib/carrinho/contexto";
 import { CheckoutProvider } from "@/lib/checkout/contexto";
 
@@ -19,6 +20,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <main className="flex-1">{children}</main>
         <Footer />
         <CarrinhoDrawer />
+        <ToastCarrinho />
       </CheckoutProvider>
     </CarrinhoProvider>
   );

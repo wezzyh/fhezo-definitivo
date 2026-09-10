@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Cube, Minus, Plus, Trash, X } from "@phosphor-icons/react";
 import { useCarrinho } from "@/lib/carrinho/contexto";
+import type { ItemCarrinho } from "@/lib/carrinho/reducer";
+import { calcularOpcoesFrete, type OpcaoFrete } from "@/lib/frete/melhorenvio";
 
 // Drawer lateral do carrinho — Etapa 3 da integração do novo frontend
 // (ver HANDOFF.md). Baseado visualmente em
@@ -17,6 +20,115 @@ const LIMITE_FRETE_GRATIS = 500;
 
 function formatarMoeda(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function formatarCep(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").slice(0, 8);
+  return digitos.length > 5 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : digitos;
+}
+
+// Calculadora de frete do drawer — reaproveita a mesma Server Action do
+// checkout (calcularOpcoesFrete, src/lib/frete/melhorenvio.ts) em vez de
+// duplicar a chamada à API do Melhor Envio. Diferente do checkout
+// (SecaoFrete, que calcula sozinho assim que o CEP completa e guarda a
+// opção escolhida no CheckoutContext pra seguir pro pagamento), aqui é só
+// uma estimativa sob demanda (botão "Calcular") pra ajudar a decidir antes
+// de ir pro checkout — nada aqui é persistido ou herdado pelo checkout, que
+// continua pedindo o CEP de novo e mantém sua própria seleção.
+function CalculadoraFrete({ itens }: { itens: ItemCarrinho[] }) {
+  const [cep, setCep] = useState("");
+  const [opcoes, setOpcoes] = useState<OpcaoFrete[] | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function calcular() {
+    const cepLimpo = cep.replace(/\D/g, "");
+    if (cepLimpo.length !== 8) {
+      setErro("Informe um CEP válido.");
+      setOpcoes(null);
+      return;
+    }
+
+    setCarregando(true);
+    setErro(null);
+    setOpcoes(null);
+
+    const resultado = await calcularOpcoesFrete(
+      cepLimpo,
+      itens.map((item) => ({
+        id: item.produtoId,
+        larguraCm: item.larguraCm,
+        alturaCm: item.alturaCm,
+        comprimentoCm: item.comprimentoCm,
+        pesoKg: item.pesoKg,
+        valorUnitario: item.preco,
+        quantidade: item.quantidade,
+      })),
+    );
+
+    setCarregando(false);
+
+    if (!resultado.sucesso) {
+      setErro(resultado.mensagem);
+      return;
+    }
+    setOpcoes(resultado.opcoes);
+  }
+
+  return (
+    <div className="border-b border-ink-200 px-5 py-4">
+      <p className="text-sm font-semibold text-ink-800">Calcular frete</p>
+
+      <div className="mt-2 flex gap-2">
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="00000-000"
+          value={cep}
+          onChange={(evento) => setCep(formatarCep(evento.target.value))}
+          onKeyDown={(evento) => {
+            if (evento.key === "Enter") {
+              evento.preventDefault();
+              void calcular();
+            }
+          }}
+          maxLength={9}
+          aria-label="CEP de entrega"
+          className="h-11 min-w-0 flex-1 rounded-fhezo border border-ink-300 px-3 text-sm text-ink-900 outline-none transition focus:border-fhezo-500"
+        />
+
+        <button
+          type="button"
+          onClick={() => void calcular()}
+          disabled={carregando}
+          className="h-11 shrink-0 rounded-fhezo bg-ink-800 px-4 text-sm font-semibold text-white transition hover:bg-ink-900 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {carregando ? "Calculando..." : "Calcular"}
+        </button>
+      </div>
+
+      {erro && <p className="mt-2 text-xs text-fhezo-danger">{erro}</p>}
+
+      {opcoes && (
+        <ul className="mt-3 space-y-2">
+          {opcoes.map((opcao) => (
+            <li
+              key={opcao.id}
+              className="flex items-center justify-between gap-3 rounded-fhezo border border-ink-200 px-3 py-2 text-sm"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-ink-900">
+                  {opcao.transportadora ? `${opcao.transportadora} — ${opcao.nome}` : opcao.nome}
+                </p>
+                <p className="text-xs text-ink-500">Prazo: {opcao.prazoDias} dia(s) útil(eis)</p>
+              </div>
+              <strong className="shrink-0 text-fhezo-600">{formatarMoeda(opcao.valor)}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function CarrinhoDrawer() {
@@ -46,7 +158,7 @@ export function CarrinhoDrawer() {
             type="button"
             onClick={fecharCarrinho}
             aria-label="Fechar carrinho"
-            className="flex h-10 w-10 items-center justify-center hover:bg-warm-100"
+            className="flex h-10 w-10 items-center justify-center rounded-fhezo hover:bg-warm-100"
           >
             <X size={24} weight="bold" />
           </button>
@@ -64,7 +176,7 @@ export function CarrinhoDrawer() {
             <div className="space-y-6">
               {itens.map((item) => (
                 <div key={item.produtoId} className="grid grid-cols-[82px_minmax(0,1fr)] gap-4 border-b border-ink-200 pb-6">
-                  <div className="flex h-[82px] w-[82px] shrink-0 items-center justify-center bg-warm-100">
+                  <div className="flex h-[82px] w-[82px] shrink-0 items-center justify-center overflow-hidden rounded-fhezo bg-warm-100">
                     {item.imagemUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image.
                       <img src={item.imagemUrl} alt="" className="h-full w-full object-contain" />
@@ -88,12 +200,13 @@ export function CarrinhoDrawer() {
                     </div>
 
                     <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="flex h-10 items-center border border-ink-300">
+                      <div className="flex h-10 items-center overflow-hidden rounded-fhezo border border-ink-300">
                         <button
                           type="button"
                           onClick={() => alterarQuantidade(item.produtoId, item.quantidade - 1)}
+                          disabled={item.quantidade <= 1}
                           aria-label="Diminuir quantidade"
-                          className="flex h-full w-10 items-center justify-center text-fhezo-600"
+                          className="flex h-full w-10 items-center justify-center text-fhezo-600 disabled:cursor-not-allowed disabled:text-ink-300"
                         >
                           <Minus size={15} />
                         </button>
@@ -147,6 +260,8 @@ export function CarrinhoDrawer() {
               </p>
             </div>
 
+            <CalculadoraFrete itens={itens} />
+
             <div className="px-5 py-5">
               <div className="flex items-center justify-between text-sm text-ink-600">
                 <span>Subtotal</span>
@@ -161,7 +276,7 @@ export function CarrinhoDrawer() {
               <Link
                 href="/checkout"
                 onClick={fecharCarrinho}
-                className="mt-5 flex h-[52px] w-full items-center justify-center bg-fhezo-600 font-display font-semibold uppercase text-white transition hover:bg-fhezo-700"
+                className="mt-5 flex h-[52px] w-full items-center justify-center rounded-fhezo bg-fhezo-600 font-display font-semibold uppercase text-white transition hover:bg-fhezo-700"
               >
                 Finalizar compra
               </Link>

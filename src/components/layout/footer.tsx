@@ -10,6 +10,7 @@ import {
   YoutubeLogo,
 } from "@phosphor-icons/react/ssr";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   obterFooterPublicado,
@@ -304,29 +305,27 @@ export async function Footer() {
                   flex
                   flex-wrap
                   items-center
-                  gap-x-5 gap-y-3
+                  gap-x-3 gap-y-3
                 "
               >
                 {[...dadosFooter.formas_pagamento].sort((a, b) => a.ordem - b.ordem).map((metodo: ImagemFooter) => (
-                  // eslint-disable-next-line @next/next/no-img-element -- URL do Storage cadastrada pelo admin, sem domínio fixo para next/image.
-                  <img
-                    key={metodo.id}
-                    src={metodo.imagem_url}
-                    alt={metodo.alt}
-                    loading="lazy"
-                    className="
-                      h-[22px]
-                      w-auto
-                      max-w-[58px]
-                      object-contain
-                      opacity-75
-                      grayscale
-                      transition
-                      duration-200
-                      hover:opacity-100
-                      hover:grayscale-0
-                    "
-                  />
+                  <div key={metodo.id} className="relative h-[35px] w-[58px]">
+                    <Image
+                      src={metodo.imagem_url}
+                      alt={metodo.alt}
+                      fill
+                      sizes="58px"
+                      className="
+                        object-contain
+                        opacity-75
+                        grayscale
+                        transition
+                        duration-200
+                        hover:opacity-100
+                        hover:grayscale-0
+                      "
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -350,21 +349,15 @@ export async function Footer() {
 
               <div className="mt-3 flex items-center gap-5">
                 {[...dadosFooter.selos_seguranca].sort((a, b) => a.ordem - b.ordem).map((selo: ImagemFooter) => (
-                  // eslint-disable-next-line @next/next/no-img-element -- URL do Storage cadastrada pelo admin, sem domínio fixo para next/image.
-                  <img
-                    key={selo.id}
-                    src={selo.imagem_url}
-                    alt={selo.alt}
-                    loading="lazy"
-                    className="
-                      h-[30px]
-                      max-w-[92px]
-                      object-contain
-                      object-left
-                      opacity-70
-                      grayscale
-                    "
-                  />
+                  <div key={selo.id} className="relative h-[30px] w-[92px]">
+                    <Image
+                      src={selo.imagem_url}
+                      alt={selo.alt}
+                      fill
+                      sizes="92px"
+                      className="object-contain object-left opacity-70 grayscale"
+                    />
+                  </div>
                 ))}
               </div>
             </div>

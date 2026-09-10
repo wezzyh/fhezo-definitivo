@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCartSimple, Cube } from "@phosphor-icons/react";
 import { useCarrinho } from "@/lib/carrinho/contexto";
@@ -41,6 +42,7 @@ export function CartaoProduto({ produto }: { produto: ProdutoCartao }) {
         alturaCm: produto.altura_cm,
         larguraCm: produto.largura_cm,
         comprimentoCm: produto.comprimento_cm,
+        imagemUrl: produto.imagem_url,
       },
       1,
     );
@@ -55,13 +57,14 @@ export function CartaoProduto({ produto }: { produto: ProdutoCartao }) {
           </span>
         )}
 
-        <div className="flex h-[245px] items-center justify-center bg-white p-6">
+        <div className="relative flex h-[245px] items-center justify-center bg-white p-6">
           {produto.imagem_url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- URL externa arbitrária cadastrada pelo admin, sem domínio fixo para next/image.
-            <img
+            <Image
               src={produto.imagem_url}
               alt={produto.nome}
-              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+              fill
+              sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, (max-width: 1280px) 23vw, 18vw"
+              className="object-contain transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
             <Cube size={64} weight="thin" className="text-ink-200" />

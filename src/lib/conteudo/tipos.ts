@@ -97,21 +97,6 @@ export interface DadosFooter {
   selos_seguranca: ImagemFooter[];
 }
 
-/** Um ícone do rodapé (forma de pagamento ou selo de segurança). */
-export interface ImagemFooter {
-  /** Id estável dentro da lista, gerado no client ao adicionar o item — nunca reaproveitado. */
-  id: string;
-  imagem_url: string;
-  /** Texto alternativo (ex.: "Visa", "Site seguro SSL") — também usado como legenda no admin. */
-  alt: string;
-  ordem: number;
-}
-
-export interface DadosFooter {
-  formas_pagamento: ImagemFooter[];
-  selos_seguranca: ImagemFooter[];
-}
-
 export type ResultadoPublicacao = { sucesso: true; versao: number } | { sucesso: false; erro: string };
 
 /** Título/descrição para buscadores de uma página que não tem tabela própria (Home, listagem de produtos). Páginas institucionais têm seo_titulo/seo_descricao na própria linha, não aqui. */

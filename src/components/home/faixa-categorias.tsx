@@ -2,6 +2,7 @@
 
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Categoria } from "@/types/database";
 
@@ -135,12 +136,12 @@ export function FaixaCategorias({ categorias }: FaixaCategoriasProps) {
               "
             >
               {categoria.imagem_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- URL do Storage cadastrada pelo admin.
-                <img
+                <Image
                   src={categoria.imagem_url}
                   alt={categoria.nome}
-                  loading="lazy"
-                  className="relative z-[1] h-[88%] w-[88%] object-contain"
+                  fill
+                  sizes="(max-width: 768px) 120px, (max-width: 1024px) 138px, 152px"
+                  className="z-[1] object-contain p-[6%]"
                 />
               ) : (
                 <span className="font-display text-4xl font-semibold text-fhezo-700">

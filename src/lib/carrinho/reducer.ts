@@ -66,9 +66,9 @@ export function carrinhoReducer(estado: EstadoCarrinho, acao: AcaoCarrinho): Est
       return { itens: estado.itens.filter((item) => item.produtoId !== acao.produtoId) };
 
     case "ALTERAR_QUANTIDADE": {
-      if (acao.quantidade <= 0) {
-        return { itens: estado.itens.filter((item) => item.produtoId !== acao.produtoId) };
-      }
+      // Nunca remove o item por chegar a 0 — mínimo sempre 1, pra não
+      // apagar do carrinho sem querer só por clicar demais no "-". Remover
+      // de verdade é só pelo botão de lixeira (ação REMOVER, explícita).
       return {
         itens: estado.itens.map((item) =>
           item.produtoId === acao.produtoId
