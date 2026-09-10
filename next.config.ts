@@ -28,17 +28,6 @@ const nextConfig: NextConfig = {
         ]
       : [],
   },
-  // isomorphic-dompurify (sanitizarDescricaoProduto) usa jsdom no lado
-  // servidor. Sem isso, o bundler tenta empacotar jsdom junto com os Server
-  // Components e quebra em runtime na Vercel com
-  // "ERR_REQUIRE_ESM: require() of ES Module .../@exodus/bytes/encoding-lite.js"
-  // (html-encoding-sniffer, dependência do jsdom, é ESM-only e não pode ser
-  // exigido via require() depois de empacotado). serverExternalPackages faz
-  // esses pacotes ficarem de fora do bundle e serem carregados via
-  // require() nativo do Node em runtime, onde ESM/CJS se resolvem
-  // normalmente. jsdom já está na lista padrão do Next, mas
-  // html-encoding-sniffer (a dependência que efetivamente falha) não está.
-  serverExternalPackages: ["jsdom", "html-encoding-sniffer"],
 };
 
 export default nextConfig;
