@@ -19,6 +19,7 @@ import {
   PanelBottom,
   FileText,
   Search,
+  Phone,
   Plug,
   Activity,
   ChevronDown,
@@ -60,6 +61,7 @@ const GRUPOS_NAV: GrupoNav[] = [
       { rotulo: "Footer", href: "/admin/conteudo/footer", icon: PanelBottom },
       { rotulo: "Páginas", href: "/admin/conteudo/paginas", icon: FileText },
       { rotulo: "SEO", href: "/admin/conteudo/seo", icon: Search },
+      { rotulo: "Contato", href: "/admin/conteudo/contato", icon: Phone },
     ],
   },
   {

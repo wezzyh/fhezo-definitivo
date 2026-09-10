@@ -1,4 +1,4 @@
-import type { DadosMenu, DadosHome, DadosTema, DadosFooter, DadosSeo } from "./tipos";
+import type { DadosMenu, DadosHome, DadosTema, DadosFooter, DadosSeo, DadosContato } from "./tipos";
 
 // Conteúdo padrão usado em dois casos: (1) fallback em runtime se a tabela
 // conteudo_site ainda não tiver nenhuma versão publicada de um tipo (ex.:
@@ -68,5 +68,28 @@ export const SEO_PADRAO: DadosSeo = {
   produtos: {
     titulo: "Produtos | FHEZO Industrial",
     descricao: "Catálogo completo de componentes industriais da FHEZO Industrial.",
+  },
+};
+
+// "contato" também não tinha nada versionado antes — cópia exata dos
+// valores que estavam hardcoded em contato-fixo.ts (removido, ver
+// HANDOFF.md). "whatsapp" recebeu o mesmo número de "telefone": os dois
+// campos separados do arquivo antigo (telefoneTel/whatsappNumero)
+// codificavam o mesmo número, só com uma inconsistência de DDD entre eles
+// e o telefone exibido (51 no texto, 41 nos links) — provavelmente um
+// erro de digitação já existente. Redes sociais ficam null (os ícones do
+// site sempre apontaram para "#", nunca existiu link real cadastrado).
+export const CONTATO_PADRAO: DadosContato = {
+  telefone: "(51) 99351-56006",
+  whatsapp: "(51) 99351-56006",
+  email: "sac@fhezo.com.br",
+  endereco: "Curitiba - PR e região",
+  horarioDias: "Segunda a sexta-feira",
+  horarioHoras: "08:00 às 17:30",
+  redesSociais: {
+    instagram: null,
+    facebook: null,
+    youtube: null,
+    tiktok: null,
   },
 };

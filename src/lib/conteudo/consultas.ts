@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { criarClienteSupabasePublico } from "@/lib/supabase/publico";
 import type { ConteudoSite, TipoConteudoSite, Banner, PaginaInstitucional } from "@/types/database";
-import type { DadosMenu, DadosHome, DadosTema, DadosBanner, DadosFooter, DadosSeo } from "./tipos";
-import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO, FOOTER_PADRAO, SEO_PADRAO } from "./padroes";
+import type { DadosMenu, DadosHome, DadosTema, DadosBanner, DadosFooter, DadosSeo, DadosContato } from "./tipos";
+import { MENU_PADRAO, HOME_PADRAO, TEMA_PADRAO, FOOTER_PADRAO, SEO_PADRAO, CONTATO_PADRAO } from "./padroes";
 
 // Leituras públicas (site) de conteúdo versionado — sempre a versão mais
 // recente com publicado=true de cada tipo, nunca o histórico. Cacheadas
@@ -75,6 +75,16 @@ export const obterSeoPublicado = unstable_cache(
   },
   ["conteudo-site-seo"],
   { tags: ["conteudo-seo"], revalidate: REVALIDATE_SEGUNDOS },
+);
+
+/** Telefone, WhatsApp, e-mail, endereço e redes sociais — usado por Header e Footer, editável em /admin/conteudo/contato. */
+export const obterContatoPublicado = unstable_cache(
+  async (): Promise<DadosContato> => {
+    const conteudo = await buscarPublicado("contato");
+    return (conteudo?.dados as DadosContato | undefined) ?? CONTATO_PADRAO;
+  },
+  ["conteudo-site-contato"],
+  { tags: ["conteudo-contato"], revalidate: REVALIDATE_SEGUNDOS },
 );
 
 /** Páginas institucionais ativas (Sobre nós, Política de privacidade, etc.), editadas em /admin/conteudo/paginas — usado pelo footer para saber para quais dessas existe um link real, e pela rota pública /institucional/[slug]. */

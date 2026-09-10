@@ -109,3 +109,29 @@ export interface DadosSeo {
   home: SeoPagina;
   produtos: SeoPagina;
 }
+
+/** Links de perfil completos (ex.: "https://instagram.com/fhezoindustrial") — null = rede não cadastrada, ícone correspondente some do Header/Footer em vez de virar um link morto. */
+export interface RedesSociais {
+  instagram: string | null;
+  facebook: string | null;
+  youtube: string | null;
+  tiktok: string | null;
+}
+
+/**
+ * Contato usado tanto no Header quanto no Footer do site público — um
+ * lugar só de editar pra nunca divergirem entre si (antes hardcoded em
+ * contato-fixo.ts). "telefone" e "whatsapp" são digitados em formato
+ * legível (ex.: "(51) 99351-56006") — os hrefs tel:/wa.me são derivados
+ * em runtime (ver src/lib/conteudo/telefone.ts), o admin nunca precisa
+ * digitar o número já formatado pra link.
+ */
+export interface DadosContato {
+  telefone: string;
+  whatsapp: string;
+  email: string;
+  endereco: string;
+  horarioDias: string;
+  horarioHoras: string;
+  redesSociais: RedesSociais;
+}

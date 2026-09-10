@@ -248,7 +248,7 @@ export interface Integracao {
   updated_at: string;
 }
 
-export type TipoConteudoSite = "menu" | "home" | "tema" | "footer" | "seo";
+export type TipoConteudoSite = "menu" | "home" | "tema" | "footer" | "seo" | "contato";
 
 /**
  * Conteúdo do site versionado (menu, home, tema), editável pelo admin sem

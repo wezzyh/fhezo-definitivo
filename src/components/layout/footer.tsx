@@ -16,8 +16,9 @@ import {
   obterFooterPublicado,
   obterArvoreCategoriasPublica,
   obterPaginasInstitucionaisPublicadas,
+  obterContatoPublicado,
 } from "@/lib/conteudo/consultas";
-import { CONTATO_FIXO } from "@/lib/conteudo/contato-fixo";
+import { paraTelHref, paraWhatsappHref } from "@/lib/conteudo/telefone";
 import type { ImagemFooter } from "@/lib/conteudo/tipos";
 
 // Slugs fixos das 4 páginas institucionais seedadas na migration 0021 —
@@ -44,17 +45,18 @@ const SLUGS_INSTITUCIONAIS: Record<string, string> = {
 //   aparece quando há pelo menos um item cadastrado (ver ponto 2/3 do
 //   pedido) — enquanto vazio, o footer funciona normalmente sem essas duas
 //   fileiras.
-// - Contato/redes sociais/logo: mesmos valores literais já usados no
-//   Header (ver contato-fixo.ts) — sem dado real cadastrado em lugar
-//   nenhum ainda, e a logo usa o arquivo real do projeto em vez do path
-//   fictício da referência.
+// - Contato/redes sociais: conteudo_site tipo "contato", editável em
+//   /admin/conteudo/contato (mesmo dado usado pelo Header, pra nunca
+//   divergirem entre si) — a logo usa o arquivo real do projeto em vez do
+//   path fictício da referência.
 // - Institucional/Central de atendimento continuam com links "#": a
 //   referência também não tem páginas reais atrás desses links.
 export async function Footer() {
-  const [dadosFooter, categorias, paginasInstitucionais] = await Promise.all([
+  const [dadosFooter, categorias, paginasInstitucionais, contato] = await Promise.all([
     obterFooterPublicado(),
     obterArvoreCategoriasPublica(),
     obterPaginasInstitucionaisPublicadas(),
+    obterContatoPublicado(),
   ]);
 
   const productLinks = categorias.map((categoria) => ({ label: categoria.label, href: categoria.href }));
@@ -126,7 +128,7 @@ export async function Footer() {
 
             <div className="mt-5 space-y-3">
               <a
-                href={`tel:${CONTATO_FIXO.telefoneTel}`}
+                href={`tel:${paraTelHref(contato.telefone)}`}
                 className="
                   group
                   flex w-fit
@@ -144,11 +146,11 @@ export async function Footer() {
                   className="text-fhezo-400"
                 />
 
-                {CONTATO_FIXO.telefoneExibicao}
+                {contato.telefone}
               </a>
 
               <a
-                href={`mailto:${CONTATO_FIXO.email}`}
+                href={`mailto:${contato.email}`}
                 className="
                   flex w-fit
                   items-center gap-3
@@ -163,7 +165,7 @@ export async function Footer() {
                   className="text-fhezo-500"
                 />
 
-                {CONTATO_FIXO.email}
+                {contato.email}
               </a>
 
               <div
@@ -178,7 +180,7 @@ export async function Footer() {
                   className="mt-[1px] shrink-0 text-fhezo-500"
                 />
 
-                <span>{CONTATO_FIXO.endereco}</span>
+                <span>{contato.endereco}</span>
               </div>
             </div>
 
@@ -190,13 +192,13 @@ export async function Footer() {
                 pl-4
               "
             >
-              <p className="text-[13px] leading-relaxed text-ink-400">{CONTATO_FIXO.horarioDias}</p>
+              <p className="text-[13px] leading-relaxed text-ink-400">{contato.horarioDias}</p>
 
-              <p className="text-[14px] font-semibold text-ink-100">{CONTATO_FIXO.horarioHoras}</p>
+              <p className="text-[14px] font-semibold text-ink-100">{contato.horarioHoras}</p>
             </div>
 
             <a
-              href={`https://wa.me/${CONTATO_FIXO.whatsappNumero}`}
+              href={`https://wa.me/${paraWhatsappHref(contato.whatsapp)}`}
               target="_blank"
               rel="noreferrer"
               className="
@@ -257,29 +259,21 @@ export async function Footer() {
             </p>
 
             <div className="mt-3 flex items-center gap-4">
-              <SocialLink
-                href="#"
-                label="Instagram"
-                icon={<InstagramLogo size={21} />}
-              />
+              {contato.redesSociais.instagram && (
+                <SocialLink href={contato.redesSociais.instagram} label="Instagram" icon={<InstagramLogo size={21} />} />
+              )}
 
-              <SocialLink
-                href="#"
-                label="Facebook"
-                icon={<FacebookLogo size={20} />}
-              />
+              {contato.redesSociais.facebook && (
+                <SocialLink href={contato.redesSociais.facebook} label="Facebook" icon={<FacebookLogo size={20} />} />
+              )}
 
-              <SocialLink
-                href="#"
-                label="YouTube"
-                icon={<YoutubeLogo size={22} />}
-              />
+              {contato.redesSociais.youtube && (
+                <SocialLink href={contato.redesSociais.youtube} label="YouTube" icon={<YoutubeLogo size={22} />} />
+              )}
 
-              <SocialLink
-                href="#"
-                label="TikTok"
-                icon={<TiktokLogo size={20} />}
-              />
+              {contato.redesSociais.tiktok && (
+                <SocialLink href={contato.redesSociais.tiktok} label="TikTok" icon={<TiktokLogo size={20} />} />
+              )}
             </div>
           </div>
 

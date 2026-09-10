@@ -9,10 +9,15 @@ import {
   YoutubeLogo,
 } from "@phosphor-icons/react/ssr";
 import Link from "next/link";
-import { obterArvoreCategoriasPublica, obterMenuPublicado, obterMapaSlugsCategorias } from "@/lib/conteudo/consultas";
+import {
+  obterArvoreCategoriasPublica,
+  obterMenuPublicado,
+  obterMapaSlugsCategorias,
+  obterContatoPublicado,
+} from "@/lib/conteudo/consultas";
 import { resolverHrefItemMenu } from "@/lib/conteudo/resolver-href-menu";
+import { paraTelHref, paraWhatsappHref } from "@/lib/conteudo/telefone";
 import { obterClienteLogado } from "@/lib/clientes/sessao";
-import { CONTATO_FIXO } from "@/lib/conteudo/contato-fixo";
 import { BarraPromocional } from "./barra-promocional";
 import { MenuConta } from "@/components/account/menu-conta";
 import { MegaMenuDepartamentos } from "@/components/navigation/mega-menu-departamentos";
@@ -29,16 +34,18 @@ import type { ItemMenu } from "@/lib/conteudo/tipos";
 //   editável em /admin/conteudo/menu (obterMenuPublicado + resolverHrefItemMenu,
 //   mesma resolução de href já usada antes em nav.tsx) — curadoria manual do
 //   admin (rótulo, categoria/link livre, submenu), diferente do mega menu.
-// - Contato/redes sociais: sem dado real cadastrado no projeto ainda —
-//   mantidos os valores literais da referência (CONTATO_FIXO), decisão do usuário.
+// - Contato/redes sociais: conteudo_site tipo "contato", editável em
+//   /admin/conteudo/contato (mesmo dado usado pelo Footer, pra nunca
+//   divergirem entre si — ver contato-fixo.ts, removido nessa migração).
 // - Busca: continua um <form action="/produtos" method="get"> real (sem
 //   lógica nova), só restilizado com as classes escuras da referência.
 export async function Header() {
-  const [arvoreCategorias, dadosMenu, mapaSlugs, logado] = await Promise.all([
+  const [arvoreCategorias, dadosMenu, mapaSlugs, logado, contato] = await Promise.all([
     obterArvoreCategoriasPublica(),
     obterMenuPublicado(),
     obterMapaSlugsCategorias(),
     obterClienteLogado(),
+    obterContatoPublicado(),
   ]);
   const clienteMenu = logado?.cliente ? { primeiroNome: logado.cliente.nome.split(" ")[0] } : null;
 
@@ -62,7 +69,9 @@ export async function Header() {
           >
             <div className="flex items-center gap-7 text-[13px]">
               <a
-                href="#"
+                href={`https://wa.me/${paraWhatsappHref(contato.whatsapp)}`}
+                target="_blank"
+                rel="noreferrer"
                 className="
                   flex items-center gap-2
                   font-semibold
@@ -74,7 +83,7 @@ export async function Header() {
               </a>
 
               <a
-                href={`tel:${CONTATO_FIXO.telefoneTel}`}
+                href={`tel:${paraTelHref(contato.telefone)}`}
                 className="
                   flex items-center gap-2
                   font-semibold
@@ -82,11 +91,11 @@ export async function Header() {
                 "
               >
                 <Phone size={18} className="text-fhezo-400" />
-                {CONTATO_FIXO.telefoneExibicao}
+                {contato.telefone}
               </a>
 
               <a
-                href={`mailto:${CONTATO_FIXO.email}`}
+                href={`mailto:${contato.email}`}
                 className="
                   flex items-center gap-2
                   font-semibold
@@ -94,15 +103,31 @@ export async function Header() {
                 "
               >
                 <EnvelopeSimple size={18} className="text-fhezo-400" />
-                {CONTATO_FIXO.email}
+                {contato.email}
               </a>
             </div>
 
             <div className="flex items-center gap-5 text-ink-200">
-              <InstagramLogo size={17} />
-              <FacebookLogo size={17} />
-              <YoutubeLogo size={18} />
-              <TiktokLogo size={17} />
+              {contato.redesSociais.instagram && (
+                <a href={contato.redesSociais.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:text-fhezo-300">
+                  <InstagramLogo size={17} />
+                </a>
+              )}
+              {contato.redesSociais.facebook && (
+                <a href={contato.redesSociais.facebook} target="_blank" rel="noreferrer" aria-label="Facebook" className="hover:text-fhezo-300">
+                  <FacebookLogo size={17} />
+                </a>
+              )}
+              {contato.redesSociais.youtube && (
+                <a href={contato.redesSociais.youtube} target="_blank" rel="noreferrer" aria-label="YouTube" className="hover:text-fhezo-300">
+                  <YoutubeLogo size={18} />
+                </a>
+              )}
+              {contato.redesSociais.tiktok && (
+                <a href={contato.redesSociais.tiktok} target="_blank" rel="noreferrer" aria-label="TikTok" className="hover:text-fhezo-300">
+                  <TiktokLogo size={17} />
+                </a>
+              )}
             </div>
           </div>
         </div>
