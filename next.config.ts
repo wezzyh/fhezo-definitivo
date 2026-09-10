@@ -27,6 +27,16 @@ const nextConfig: NextConfig = {
           },
         ]
       : [],
+    // Next 16 restringe a qualidade padrão a [75] (ver changelog da v16).
+    // 90 é usado nos banners full-bleed (hero-banner.tsx,
+    // faixa-institucional.tsx) — imagens exibidas quase na largura total
+    // da tela, onde compressão perceptível fica mais visível. Não elimina
+    // o problema de fundo (o arquivo de origem do banner atual tem só
+    // 1200×400px, menor que a largura de exibição em monitor grande —
+    // isso só se resolve subindo uma imagem maior em /admin/conteudo/banners,
+    // recomendo pelo menos ~2400px de largura), mas evita comprimir de novo
+    // por cima de uma imagem que já é pequena.
+    qualities: [75, 90],
   },
 };
 

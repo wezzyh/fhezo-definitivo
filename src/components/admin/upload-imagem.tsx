@@ -8,6 +8,14 @@ import { enviarImagemAdmin } from "./upload-imagem-actions";
 const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5 MB
 const TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp"];
 
+// Banners são exibidos quase na largura total da tela (ver
+// src/components/home/hero-banner.tsx) — o teto padrão de 1200px de
+// converter-webp.ts (pensado para produtos/categorias/marcas, exibidos
+// bem menores) deixava o banner visivelmente borrado em monitor grande.
+const LARGURA_MAXIMA_POR_PASTA: Partial<Record<UploadImagemProps["pasta"], number>> = {
+  banners: 2400,
+};
+
 interface UploadImagemProps {
   /** Nome do campo no FormData do formulário — o valor final (URL pública) sai daqui, igual a um <Input> comum. Também é publicado um campo oculto "<name>_anterior" com a URL que existia ao carregar a tela, para a Server Action de salvar decidir se limpa a imagem antiga do Storage. */
   name: string;
@@ -64,7 +72,7 @@ export function UploadImagem({
     try {
       let arquivoParaEnviar = arquivo;
       try {
-        arquivoParaEnviar = await converterImagemParaWebP(arquivo);
+        arquivoParaEnviar = await converterImagemParaWebP(arquivo, LARGURA_MAXIMA_POR_PASTA[pasta]);
       } catch {
         // Falha na conversão (ex.: canvas indisponível) não deve travar o
         // upload — segue com o arquivo original.

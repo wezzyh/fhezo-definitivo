@@ -3,7 +3,7 @@
 // client (usa document/canvas), por isso não tem diretiva "use server" nem
 // "use client" própria: é chamado de dentro de um Client Component.
 
-const LARGURA_MAXIMA_PX = 1200;
+const LARGURA_MAXIMA_PX_PADRAO = 1200;
 const QUALIDADE_WEBP = 0.82;
 
 let suportaWebpCache: boolean | null = null;
@@ -42,19 +42,27 @@ function trocarExtensao(nomeArquivo: string, novaExtensao: string): string {
 }
 
 /**
- * Redimensiona (só para baixo, nunca amplia) para no máximo 1200px de
- * largura e converte para WebP a ~82% de qualidade. Se o navegador não
- * souber codificar WebP, cai de volta pro formato original do arquivo sem
- * quebrar o upload — só a etapa de compressão/redimensionamento é
- * ignorada nesse caso (mantém o arquivo original como está).
+ * Redimensiona (só para baixo, nunca amplia) para no máximo `larguraMaxima`
+ * px de largura (1200px por padrão — suficiente para produtos, categorias,
+ * marcas e ícones do rodapé, exibidos bem menores que isso) e converte
+ * para WebP a ~82% de qualidade. Banners passam um teto maior (ver
+ * upload-imagem.tsx) porque são exibidos quase na largura total da tela —
+ * 1200px nessa hora fica visivelmente borrado em monitor grande (esticado
+ * além do tamanho real do arquivo). Se o navegador não souber codificar
+ * WebP, cai de volta pro formato original do arquivo sem quebrar o
+ * upload — só a etapa de compressão/redimensionamento é ignorada nesse
+ * caso (mantém o arquivo original como está).
  */
-export async function converterImagemParaWebP(arquivo: File): Promise<File> {
+export async function converterImagemParaWebP(
+  arquivo: File,
+  larguraMaxima: number = LARGURA_MAXIMA_PX_PADRAO,
+): Promise<File> {
   if (!suportaWebp()) {
     return arquivo;
   }
 
   const imagem = await carregarImagem(arquivo);
-  const escala = Math.min(1, LARGURA_MAXIMA_PX / imagem.naturalWidth);
+  const escala = Math.min(1, larguraMaxima / imagem.naturalWidth);
   const largura = Math.round(imagem.naturalWidth * escala);
   const altura = Math.round(imagem.naturalHeight * escala);
 
