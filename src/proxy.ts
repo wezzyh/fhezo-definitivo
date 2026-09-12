@@ -1,7 +1,31 @@
+import { politicaCheckout } from "@/lib/checkout/csp";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  if (
+    request.nextUrl.pathname === "/checkout" ||
+    request.nextUrl.pathname.startsWith("/checkout/")
+  ) {
+    const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+    const politica = politicaCheckout(
+      nonce,
+      process.env.NODE_ENV === "development",
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+    );
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("Content-Security-Policy", politica);
+    const resposta = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    resposta.headers.set("Content-Security-Policy", politica);
+    resposta.headers.set("Cache-Control", "private, no-store, max-age=0");
+    resposta.headers.set("Referrer-Policy", "no-referrer");
+    resposta.headers.set("X-Content-Type-Options", "nosniff");
+    resposta.headers.set("X-Frame-Options", "DENY");
+    return resposta;
+  }
   let respostaSupabase = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -13,7 +37,9 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesParaDefinir) {
-          cookiesParaDefinir.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesParaDefinir.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
           respostaSupabase = NextResponse.next({ request });
           cookiesParaDefinir.forEach(({ name, value, options }) =>
             respostaSupabase.cookies.set(name, value, options),
@@ -77,5 +103,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/checkout/:path*"],
 };

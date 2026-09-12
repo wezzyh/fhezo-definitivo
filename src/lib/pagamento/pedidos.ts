@@ -7,9 +7,10 @@ import { enviarPedidoParaBling } from "@/lib/integracoes/bling-pedidos";
 
 // Mapeamento entre o status de cobrança do Asaas e o status do nosso
 // pedido. Compartilhado pelo webhook (src/app/api/webhooks/asaas/route.ts,
-// fonte de verdade) e pelo polling do Pix (verificarStatusPagamento em
-// src/app/(site)/checkout/pagamento/actions.ts, que atualiza o mesmo jeito
-// como fallback para quando o webhook não alcança o ambiente, ex.: localhost).
+// fonte de verdade) e pela consulta da confirmação (buscarResumoPedido em
+// src/app/(site)/checkout/confirmacao/actions.ts, só para o dono do pedido),
+// que atualiza do mesmo jeito como fallback para quando o webhook não
+// alcança o ambiente, ex.: localhost.
 
 const STATUS_PAGOS = new Set(["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"]);
 const STATUS_CANCELADOS = new Set([

@@ -1,16 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Integracao } from "@/types/database";
+import {
+  obterConfigMelhorEnvio,
+  obterCredenciaisOAuthMelhorEnvio,
+  type ConfigMelhorEnvio,
+} from "@/lib/config/integracoes";
+import type { AmbienteIntegracao } from "@/lib/config/regras-ambiente";
 
-// Fluxo de autorização OAuth 2.0 do Melhor Envio (sandbox) e persistência
-// dos tokens na tabela "integracoes". Compartilhado pela rota de callback
+// Fluxo de autorização OAuth 2.0 do Melhor Envio e persistência dos tokens
+// na tabela "integracoes". Compartilhado pela rota de callback
 // (src/app/admin/integracao/melhorenvio/callback/route.ts) e pelo cálculo
-// de frete (src/lib/frete/melhorenvio.ts), que lê/renova o token salvo aqui
+// de frete (src/lib/frete/cotacao.ts), que lê/renova o token salvo aqui
 // em vez de depender de um token fixo em variável de ambiente.
+//
+// APPSEC-028: URLs de OAuth vêm de obterConfigMelhorEnvio (sandbox ou
+// produção conforme MELHOR_ENVIO_ENV, sempre as mesmas da API), e cada token
+// é salvo com o ambiente que o emitiu. Um token de outro ambiente — ou sem
+// ambiente registrado, anterior à migração 0031 — nunca é usado.
 
 export const PROVEDOR_MELHOR_ENVIO = "melhor_envio";
-
-const URL_AUTORIZACAO = "https://sandbox.melhorenvio.com.br/oauth/authorize";
-const URL_TOKEN = "https://sandbox.melhorenvio.com.br/oauth/token";
 
 const SCOPES_MELHOR_ENVIO = [
   "cart-read",
@@ -23,27 +31,10 @@ const SCOPES_MELHOR_ENVIO = [
 // vence entre a checagem e a chamada à API do Melhor Envio.
 const MARGEM_EXPIRACAO_MS = 60_000;
 
-function lerCredenciaisMelhorEnvio(): {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-} {
-  const clientId = process.env.MELHOR_ENVIO_CLIENT_ID;
-  const clientSecret = process.env.MELHOR_ENVIO_CLIENT_SECRET;
-  const redirectUri = process.env.MELHOR_ENVIO_REDIRECT_URI;
-
-  if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error(
-      "Configuração incompleta: defina MELHOR_ENVIO_CLIENT_ID, MELHOR_ENVIO_CLIENT_SECRET e MELHOR_ENVIO_REDIRECT_URI.",
-    );
-  }
-
-  return { clientId, clientSecret, redirectUri };
-}
-
 /** Monta a URL para onde o admin é levado para autorizar a integração. */
 export function montarUrlAutorizacaoMelhorEnvio(): string {
-  const { clientId, redirectUri } = lerCredenciaisMelhorEnvio();
+  const config = obterConfigMelhorEnvio();
+  const { clientId, redirectUri } = obterCredenciaisOAuthMelhorEnvio();
 
   const parametros = new URLSearchParams({
     client_id: clientId,
@@ -52,13 +43,18 @@ export function montarUrlAutorizacaoMelhorEnvio(): string {
     scope: SCOPES_MELHOR_ENVIO.join(" "),
   });
 
-  return `${URL_AUTORIZACAO}?${parametros.toString()}`;
+  return `${config.urlAutorizacao}?${parametros.toString()}`;
 }
 
 interface RespostaTokenMelhorEnvio {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+}
+
+/** Tokens já marcados com o ambiente (sandbox/produção) do servidor OAuth que os emitiu. */
+export interface TokensMelhorEnvio extends RespostaTokenMelhorEnvio {
+  ambiente: AmbienteIntegracao;
 }
 
 function ehRespostaTokenValida(dados: unknown): dados is RespostaTokenMelhorEnvio {
@@ -71,8 +67,8 @@ function ehRespostaTokenValida(dados: unknown): dados is RespostaTokenMelhorEnvi
   );
 }
 
-async function solicitarToken(corpo: Record<string, string>): Promise<RespostaTokenMelhorEnvio> {
-  const resposta = await fetch(URL_TOKEN, {
+async function solicitarToken(config: ConfigMelhorEnvio, corpo: Record<string, string>): Promise<TokensMelhorEnvio> {
+  const resposta = await fetch(config.urlToken, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -88,14 +84,15 @@ async function solicitarToken(corpo: Record<string, string>): Promise<RespostaTo
     throw new Error(`O Melhor Envio recusou a solicitação de token (status ${resposta.status}).`);
   }
 
-  return dados;
+  return { ...dados, ambiente: config.ambiente };
 }
 
 /** Troca o "code" recebido no callback OAuth pelo access_token/refresh_token. */
-export async function trocarCodigoPorToken(code: string): Promise<RespostaTokenMelhorEnvio> {
-  const { clientId, clientSecret, redirectUri } = lerCredenciaisMelhorEnvio();
+export async function trocarCodigoPorToken(code: string): Promise<TokensMelhorEnvio> {
+  const config = obterConfigMelhorEnvio();
+  const { clientId, clientSecret, redirectUri } = obterCredenciaisOAuthMelhorEnvio();
 
-  return solicitarToken({
+  return solicitarToken(config, {
     grant_type: "authorization_code",
     client_id: clientId,
     client_secret: clientSecret,
@@ -104,10 +101,10 @@ export async function trocarCodigoPorToken(code: string): Promise<RespostaTokenM
   });
 }
 
-async function renovarToken(refreshToken: string): Promise<RespostaTokenMelhorEnvio> {
-  const { clientId, clientSecret } = lerCredenciaisMelhorEnvio();
+async function renovarToken(config: ConfigMelhorEnvio, refreshToken: string): Promise<TokensMelhorEnvio> {
+  const { clientId, clientSecret } = obterCredenciaisOAuthMelhorEnvio();
 
-  return solicitarToken({
+  return solicitarToken(config, {
     grant_type: "refresh_token",
     client_id: clientId,
     client_secret: clientSecret,
@@ -115,10 +112,10 @@ async function renovarToken(refreshToken: string): Promise<RespostaTokenMelhorEn
   });
 }
 
-/** Salva (ou substitui) os tokens da integração com o Melhor Envio. */
+/** Salva (ou substitui) os tokens da integração com o Melhor Envio, com o ambiente que os emitiu. */
 export async function salvarTokensMelhorEnvio(
   supabase: SupabaseClient,
-  tokens: RespostaTokenMelhorEnvio,
+  tokens: TokensMelhorEnvio,
 ): Promise<void> {
   const expiraEm = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
@@ -128,6 +125,7 @@ export async function salvarTokensMelhorEnvio(
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
       expira_em: expiraEm,
+      ambiente: tokens.ambiente,
     },
     { onConflict: "provedor" },
   );
@@ -154,15 +152,31 @@ export async function buscarIntegracaoMelhorEnvio(
 /**
  * Retorna um access_token válido para o Melhor Envio, renovando-o
  * automaticamente via refresh_token quando necessário. Retorna `null`
- * quando a integração nunca foi conectada ou a renovação falha — quem
- * chama deve tratar isso como "frete indisponível", sem travar o caller.
+ * quando a integração nunca foi conectada, a renovação falha, a
+ * configuração de ambiente é inválida, ou o token salvo é de OUTRO ambiente
+ * (ex.: token de sandbox num deploy de produção) — quem chama deve tratar
+ * isso como "frete indisponível"; o admin precisa reconectar no ambiente
+ * certo.
  */
 export async function obterTokenValidoMelhorEnvio(
   supabase: SupabaseClient,
 ): Promise<string | null> {
+  let config: ConfigMelhorEnvio;
+  try {
+    config = obterConfigMelhorEnvio();
+  } catch {
+    return null;
+  }
+
   const integracao = await buscarIntegracaoMelhorEnvio(supabase);
 
   if (!integracao?.access_token) {
+    return null;
+  }
+
+  // Inclui o caso de token sem ambiente registrado (salvo antes da migração
+  // 0031): sem saber de onde veio, não é usado.
+  if (integracao.ambiente !== config.ambiente) {
     return null;
   }
 
@@ -178,7 +192,7 @@ export async function obterTokenValidoMelhorEnvio(
   }
 
   try {
-    const novosTokens = await renovarToken(integracao.refresh_token);
+    const novosTokens = await renovarToken(config, integracao.refresh_token);
     await salvarTokensMelhorEnvio(supabase, novosTokens);
     return novosTokens.access_token;
   } catch {

@@ -1,61 +1,72 @@
 import "server-only";
 
-// Cliente da API do Asaas (sandbox) — criação de cliente/cobrança e consulta
-// de status. ASAAS_API_KEY nunca deve chegar ao navegador: o import de
-// "server-only" quebra o build se este arquivo acabar sendo importado por um
-// Client Component. Só deve ser chamado a partir de Server Actions ou Route
-// Handlers (src/app/(site)/checkout/pagamento/actions.ts e
+import { obterConfigAsaas, type ConfigAsaas } from "@/lib/config/integracoes";
+
+// Cliente da API do Asaas — criação de cliente/cobrança e consulta de
+// status. URL e chave vêm de obterConfigAsaas (src/lib/config/integracoes.ts):
+// sandbox ou produção conforme ASAAS_ENV, conferido contra o ambiente do
+// deploy (APPSEC-028). ASAAS_API_KEY nunca deve chegar ao navegador: o import
+// de "server-only" quebra o build se este arquivo acabar sendo importado por
+// um Client Component. Só deve ser chamado a partir de Server Actions ou
+// Route Handlers (src/app/(site)/checkout/pagamento/actions.ts e
 // src/app/api/webhooks/asaas/route.ts).
 
-const URL_BASE = "https://api-sandbox.asaas.com/v3";
+/** `statusHttp` presente quando o Asaas respondeu com erro — ausente em falha de rede/configuração. */
+export type ResultadoAsaas<T> =
+  | { sucesso: true; dados: T }
+  | { sucesso: false; mensagem: string; statusHttp?: number };
 
-export type ResultadoAsaas<T> = { sucesso: true; dados: T } | { sucesso: false; mensagem: string };
-
-interface ErroAsaas {
-  errors?: { code?: string; description?: string }[];
-}
-
-function lerChaveApi(): string {
-  const chave = process.env.ASAAS_API_KEY;
-  if (!chave) {
-    throw new Error("ASAAS_API_KEY não está configurada no ambiente.");
-  }
-  return chave;
-}
+const MENSAGEM_PAGAMENTO_INDISPONIVEL =
+  "O pagamento está indisponível no momento. Tente novamente mais tarde.";
 
 async function chamarAsaas<T>(
   caminho: string,
   opcoes: { method?: string; body?: unknown } = {},
 ): Promise<ResultadoAsaas<T>> {
+  // Configuração inválida (ambiente errado, chave ausente ou de outro
+  // ambiente) = nenhuma chamada ao Asaas. Falha fechado, sem fallback.
+  let config: ConfigAsaas;
+  try {
+    config = obterConfigAsaas();
+  } catch (erro) {
+    console.error(
+      "[asaas] configuração inválida:",
+      erro instanceof Error ? erro.message : "erro desconhecido",
+    );
+    return { sucesso: false, mensagem: MENSAGEM_PAGAMENTO_INDISPONIVEL };
+  }
+
   let resposta: Response;
 
   try {
-    resposta = await fetch(`${URL_BASE}${caminho}`, {
+    resposta = await fetch(`${config.urlApi}${caminho}`, {
       method: opcoes.method ?? "GET",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        access_token: lerChaveApi(),
+        access_token: config.chaveApi,
         "User-Agent": "Fhezo Industrial (contato@fhezoindustrial.com.br)",
       },
       body: opcoes.body ? JSON.stringify(opcoes.body) : undefined,
       cache: "no-store",
+      signal: AbortSignal.timeout(90_000),
+      redirect: "error",
     });
   } catch {
     return {
       sucesso: false,
-      mensagem: "Não foi possível conectar ao Asaas agora. Tente novamente em instantes.",
+      mensagem:
+        "Não foi possível conectar ao Asaas agora. Tente novamente em instantes.",
     };
   }
 
   const dados: unknown = await resposta.json().catch(() => null);
 
   if (!resposta.ok) {
-    const erro = dados as ErroAsaas | null;
-    const descricao = erro?.errors?.map((item) => item.description).filter(Boolean).join(" ");
     return {
       sucesso: false,
-      mensagem: descricao || `O Asaas recusou a solicitação (status ${resposta.status}).`,
+      mensagem: "Não foi possível processar a solicitação de pagamento.",
+      statusHttp: resposta.status,
     };
   }
 
@@ -152,6 +163,7 @@ export interface DadosTitularCartao {
 
 export interface CriarCobrancaInput {
   customerId: string;
+  referenciaExterna?: string;
   billingType: BillingTypeAsaas;
   valor: number;
   descricao: string;
@@ -187,9 +199,13 @@ export async function criarCobrancaAsaas(
     value: Number(input.valor.toFixed(2)),
     dueDate: formatarDataAsaas(vencimento),
     description: input.descricao,
+    externalReference: input.referenciaExterna,
   };
 
-  if (input.billingType === "CREDIT_CARD") {
+  if (
+    input.billingType === "CREDIT_CARD" &&
+    (input.cartao || input.titularCartao)
+  ) {
     if (!input.cartao || !input.titularCartao) {
       return { sucesso: false, mensagem: "Dados do cartão incompletos." };
     }
@@ -214,14 +230,74 @@ export async function criarCobrancaAsaas(
     }
   }
 
-  return chamarAsaas<CobrancaAsaas>("/payments", { method: "POST", body: corpo });
+  try {
+    const resultado = await chamarAsaas<CobrancaAsaas>("/payments", {
+      method: "POST",
+      body: corpo,
+    });
+    return filtrarCobranca(resultado);
+  } finally {
+    delete corpo.creditCard;
+    delete corpo.creditCardHolderInfo;
+  }
+}
+
+// Não propagar creditCardToken, número mascarado nem campos extras do provedor.
+function filtrarCobranca(
+  resultado: ResultadoAsaas<CobrancaAsaas>,
+): ResultadoAsaas<CobrancaAsaas> {
+  if (!resultado.sucesso) return resultado;
+  const d = resultado.dados;
+  if (
+    !d ||
+    typeof d.id !== "string" ||
+    !/^pay_[a-zA-Z0-9_-]+$/.test(d.id) ||
+    typeof d.status !== "string" ||
+    !/^[A-Z_]{1,50}$/.test(d.status)
+  ) {
+    return {
+      sucesso: false,
+      mensagem: "Não foi possível confirmar a resposta do pagamento.",
+    };
+  }
+  const linkAsaas = (valor: unknown) => {
+    if (typeof valor !== "string") return undefined;
+    try {
+      const u = new URL(valor);
+      return u.protocol === "https:" &&
+        (u.hostname === "asaas.com" || u.hostname.endsWith(".asaas.com")) &&
+        !u.username &&
+        !u.password
+        ? u.href
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  return {
+    sucesso: true,
+    dados: {
+      id: d.id,
+      status: d.status,
+      ...(linkAsaas(d.bankSlipUrl)
+        ? { bankSlipUrl: linkAsaas(d.bankSlipUrl) }
+        : {}),
+      ...(linkAsaas(d.invoiceUrl)
+        ? { invoiceUrl: linkAsaas(d.invoiceUrl) }
+        : {}),
+    },
+  };
 }
 
 /** Consulta o status atual de uma cobrança (usado no polling do Pix e no webhook). */
 export async function consultarCobrancaAsaas(
   paymentId: string,
 ): Promise<ResultadoAsaas<CobrancaAsaas>> {
-  return chamarAsaas<CobrancaAsaas>(`/payments/${paymentId}`);
+  return filtrarCobranca(
+    await chamarAsaas<CobrancaAsaas>(
+      `/payments/${encodeURIComponent(paymentId)}`,
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +312,9 @@ export interface PixQrCodeAsaas {
 export async function buscarQrCodePixAsaas(
   paymentId: string,
 ): Promise<ResultadoAsaas<{ qrCodeBase64: string; copiaECola: string }>> {
-  const resultado = await chamarAsaas<PixQrCodeAsaas>(`/payments/${paymentId}/pixQrCode`);
+  const resultado = await chamarAsaas<PixQrCodeAsaas>(
+    `/payments/${encodeURIComponent(paymentId)}/pixQrCode`,
+  );
 
   if (!resultado.sucesso) return resultado;
 
@@ -266,10 +344,13 @@ export async function buscarLinhaDigitavelBoletoAsaas(
   paymentId: string,
 ): Promise<ResultadoAsaas<{ linhaDigitavel: string }>> {
   const resultado = await chamarAsaas<LinhaDigitavelAsaas>(
-    `/payments/${paymentId}/identificationField`,
+    `/payments/${encodeURIComponent(paymentId)}/identificationField`,
   );
 
   if (!resultado.sucesso) return resultado;
 
-  return { sucesso: true, dados: { linhaDigitavel: resultado.dados.identificationField } };
+  return {
+    sucesso: true,
+    dados: { linhaDigitavel: resultado.dados.identificationField },
+  };
 }

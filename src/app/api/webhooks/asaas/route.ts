@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
+import { consultarCobrancaAsaas } from "@/lib/pagamento/asaas";
 import { atualizarStatusPedidoPorPagamento } from "@/lib/pagamento/pedidos";
 import { registrarEventoIntegracao } from "@/lib/integracoes/eventos";
 
@@ -12,12 +13,18 @@ import { registrarEventoIntegracao } from "@/lib/integracoes/eventos";
 // Fica fora de /admin de propósito: o proxy (src/proxy.ts) só protege
 // /admin/*, então essa rota não passa pela checagem de login — o que é
 // exatamente o que precisamos aqui.
+//
+// APPSEC-028: o status NÃO é lido do corpo do webhook. A cobrança é
+// consultada no Asaas do ambiente configurado (ASAAS_ENV) e é essa resposta
+// que vale. Um evento de uma cobrança que não existe nesse ambiente — por
+// exemplo, um evento do sandbox chegando num deploy de produção — é
+// ignorado e nunca altera pedido nenhum.
 
 const CABECALHO_TOKEN = "asaas-access-token";
 
 interface EventoWebhookAsaas {
   event?: string;
-  payment?: { id?: string; status?: string };
+  payment?: { id?: unknown };
 }
 
 export async function POST(request: NextRequest) {
@@ -35,16 +42,50 @@ export async function POST(request: NextRequest) {
 
   const corpo = (await request.json().catch(() => null)) as EventoWebhookAsaas | null;
   const paymentId = corpo?.payment?.id;
-  const status = corpo?.payment?.status;
 
-  if (!paymentId || !status) {
+  if (typeof paymentId !== "string" || !paymentId) {
     return NextResponse.json({ erro: "Corpo do webhook inválido." }, { status: 400 });
   }
 
   const supabase = criarClienteSupabaseAdmin();
 
+  const consulta = await consultarCobrancaAsaas(paymentId);
+
+  if (!consulta.sucesso) {
+    // 400/404: a cobrança não existe (ou o id não é válido) no ambiente
+    // configurado — evento de outro ambiente ou lixo. Responde 200 para o
+    // Asaas não reenviar indefinidamente (a fila de webhooks dele pausa
+    // depois de falhas seguidas). Qualquer outra falha (401/403 = chave
+    // errada, 5xx, rede, configuração inválida) responde 500: o Asaas tenta
+    // de novo e o evento não se perde.
+    const cobrancaInexistente = consulta.statusHttp === 400 || consulta.statusHttp === 404;
+
+    await registrarEventoIntegracao(supabase, {
+      provedor: "asaas",
+      evento: "webhook_pagamento",
+      sucesso: false,
+      mensagemErro: cobrancaInexistente
+        ? `Cobrança ${paymentId} não existe no ambiente configurado do Asaas (HTTP ${consulta.statusHttp}) — evento ignorado.`
+        : `Não foi possível confirmar a cobrança ${paymentId} no Asaas: ${consulta.mensagem}`,
+    });
+
+    return cobrancaInexistente
+      ? NextResponse.json({ recebido: true, ignorado: true })
+      : NextResponse.json({ erro: "Falha ao confirmar a cobrança." }, { status: 500 });
+  }
+
+  if (consulta.dados.id !== paymentId) {
+    await registrarEventoIntegracao(supabase, {
+      provedor: "asaas",
+      evento: "webhook_pagamento",
+      sucesso: false,
+      mensagemErro: `A consulta da cobrança ${paymentId} devolveu outra cobrança — evento ignorado.`,
+    });
+    return NextResponse.json({ recebido: true, ignorado: true });
+  }
+
   try {
-    await atualizarStatusPedidoPorPagamento(supabase, paymentId, status);
+    await atualizarStatusPedidoPorPagamento(supabase, paymentId, consulta.dados.status);
     await registrarEventoIntegracao(supabase, {
       provedor: "asaas",
       evento: "webhook_pagamento",

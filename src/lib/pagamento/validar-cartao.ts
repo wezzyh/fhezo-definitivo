@@ -4,7 +4,8 @@
 
 export function validarNumeroCartao(valor: string): boolean {
   const numeros = valor.replace(/\D/g, "");
-  if (numeros.length < 13 || numeros.length > 19) return false;
+  if (numeros.length < 13 || numeros.length > 19 || /^(\d)\1+$/.test(numeros))
+    return false;
 
   // Algoritmo de Luhn.
   let soma = 0;
@@ -41,7 +42,10 @@ export function validarCvv(cvv: string): boolean {
   return /^\d{3,4}$/.test(cvv.trim());
 }
 
-export function separarValidadeCartao(validade: string): { mes: string; ano: string } {
+export function separarValidadeCartao(validade: string): {
+  mes: string;
+  ano: string;
+} {
   const [mes, ano] = validade.split("/").map((parte) => parte.trim());
   const anoNumero = Number(ano);
   const anoCompleto = anoNumero < 100 ? String(2000 + anoNumero) : ano;

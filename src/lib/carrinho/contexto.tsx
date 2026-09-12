@@ -29,6 +29,8 @@ export interface NotificacaoAdicaoCarrinho {
 
 interface ContextoCarrinhoValor {
   itens: ItemCarrinho[];
+  hidratado: boolean;
+  sincronizarItens: (itens: ItemCarrinho[]) => void;
   quantidadeTotal: number;
   subtotal: number;
   adicionarItem: (item: NovoItemCarrinho, quantidade?: number) => void;
@@ -48,9 +50,10 @@ const CarrinhoContext = createContext<ContextoCarrinhoValor | null>(null);
 
 export function CarrinhoProvider({ children }: { children: ReactNode }) {
   const [estado, dispatch] = useReducer(carrinhoReducer, estadoInicialCarrinho);
-  const hidratado = useRef(false);
+  const [hidratado, marcarHidratado] = useReducer(() => true, false);
   const [aberto, setAberto] = useState(false);
-  const [notificacaoAdicao, setNotificacaoAdicao] = useState<NotificacaoAdicaoCarrinho | null>(null);
+  const [notificacaoAdicao, setNotificacaoAdicao] =
+    useState<NotificacaoAdicaoCarrinho | null>(null);
   const proximoIdNotificacao = useRef(0);
 
   // Carrega o carrinho salvo no localStorage assim que o componente monta no
@@ -67,35 +70,56 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
       // localStorage indisponível (aba anônima, cookies bloqueados etc.) —
       // segue com o carrinho vazio nesta sessão.
     } finally {
-      hidratado.current = true;
+      marcarHidratado();
     }
   }, []);
 
   useEffect(() => {
-    if (!hidratado.current) return;
+    if (!hidratado) return;
     try {
-      window.localStorage.setItem(CHAVE_LOCALSTORAGE, JSON.stringify(estado.itens));
+      window.localStorage.setItem(
+        CHAVE_LOCALSTORAGE,
+        JSON.stringify(estado.itens),
+      );
     } catch {
       // Sem acesso ao localStorage — o carrinho continua funcionando nesta
       // aba, só não persiste entre recarregamentos de página.
     }
-  }, [estado.itens]);
+  }, [estado.itens, hidratado]);
 
-  const adicionarItem = useCallback((item: NovoItemCarrinho, quantidade = 1) => {
-    dispatch({ tipo: "ADICIONAR", item, quantidade });
-    proximoIdNotificacao.current += 1;
-    setNotificacaoAdicao({ id: proximoIdNotificacao.current, item, quantidadeAdicionada: quantidade });
-  }, []);
+  const sincronizarItens = useCallback(
+    (itens: ItemCarrinho[]) => dispatch({ tipo: "SINCRONIZAR", itens }),
+    [],
+  );
 
-  const fecharNotificacaoAdicao = useCallback(() => setNotificacaoAdicao(null), []);
+  const adicionarItem = useCallback(
+    (item: NovoItemCarrinho, quantidade = 1) => {
+      dispatch({ tipo: "ADICIONAR", item, quantidade });
+      proximoIdNotificacao.current += 1;
+      setNotificacaoAdicao({
+        id: proximoIdNotificacao.current,
+        item,
+        quantidadeAdicionada: quantidade,
+      });
+    },
+    [],
+  );
+
+  const fecharNotificacaoAdicao = useCallback(
+    () => setNotificacaoAdicao(null),
+    [],
+  );
 
   const removerItem = useCallback((produtoId: string) => {
     dispatch({ tipo: "REMOVER", produtoId });
   }, []);
 
-  const alterarQuantidade = useCallback((produtoId: string, quantidade: number) => {
-    dispatch({ tipo: "ALTERAR_QUANTIDADE", produtoId, quantidade });
-  }, []);
+  const alterarQuantidade = useCallback(
+    (produtoId: string, quantidade: number) => {
+      dispatch({ tipo: "ALTERAR_QUANTIDADE", produtoId, quantidade });
+    },
+    [],
+  );
 
   const limparCarrinho = useCallback(() => {
     dispatch({ tipo: "LIMPAR" });
@@ -110,13 +134,19 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
   );
 
   const subtotal = useMemo(
-    () => estado.itens.reduce((total, item) => total + item.preco * item.quantidade, 0),
+    () =>
+      estado.itens.reduce(
+        (total, item) => total + item.preco * item.quantidade,
+        0,
+      ),
     [estado.itens],
   );
 
   const valor = useMemo<ContextoCarrinhoValor>(
     () => ({
       itens: estado.itens,
+      hidratado,
+      sincronizarItens,
       quantidadeTotal,
       subtotal,
       adicionarItem,
@@ -131,6 +161,8 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
     }),
     [
       estado.itens,
+      hidratado,
+      sincronizarItens,
       quantidadeTotal,
       subtotal,
       adicionarItem,
@@ -145,13 +177,19 @@ export function CarrinhoProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <CarrinhoContext.Provider value={valor}>{children}</CarrinhoContext.Provider>;
+  return (
+    <CarrinhoContext.Provider value={valor}>
+      {children}
+    </CarrinhoContext.Provider>
+  );
 }
 
 export function useCarrinho(): ContextoCarrinhoValor {
   const contexto = useContext(CarrinhoContext);
   if (!contexto) {
-    throw new Error("useCarrinho precisa ser usado dentro de um <CarrinhoProvider>.");
+    throw new Error(
+      "useCarrinho precisa ser usado dentro de um <CarrinhoProvider>.",
+    );
   }
   return contexto;
 }

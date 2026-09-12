@@ -355,17 +355,30 @@ endereços.
 
 ### Como um pedido se liga à conta
 
-Não existe vínculo automático por sessão no checkout — o checkout continua
-identificando o cliente **pelo CPF/CNPJ** (`src/app/(site)/checkout/actions.ts`,
-via service_role). Quem tem conta e usa o mesmo documento cai na mesma
-linha de `clientes` (que tem `auth_user_id`), e o pedido aparece em "Meus
-pedidos" naturalmente. Além disso, `vincularClienteExistentePorEmail`
-(`src/lib/clientes/sessao.ts`) liga a conta a um cadastro de convidado com
-o mesmo e-mail no login e na confirmação — só quando bate com EXATAMENTE
-uma linha sem `auth_user_id`, para nunca misturar identidades.
+Atualizado em 2026-09-11, no bloco de identidade (APPSEC-003/004/010/018).
+**Não existe vínculo automático de nenhum tipo:**
 
-**Lacuna conhecida:** o checkout não pré-preenche os dados de quem está
-logado. Funciona, mas o cliente redigita tudo.
+- O checkout exige conta. O dono do pedido é SEMPRE o cliente da sessão
+  (`auth.uid()` → `clientes.auth_user_id`, em `criarPedido`). O `clienteId`
+  que o navegador manda só serve para recusar o pagamento quando a conta
+  mudou no meio do caminho. Ele nunca decide o dono.
+- O cadastro recusa CPF/CNPJ que já exista em `clientes`, com ou sem conta.
+  Nunca assume a linha, porque saber um documento não prova ser o dono dele.
+- Login e confirmação de e-mail não vinculam nada por e-mail. A antiga
+  `vincularClienteExistentePorEmail` foi removida: o e-mail de uma compra
+  sem conta nunca foi verificado.
+- `buscarResumoPedido`, usada na confirmação, Pix, boleto e status, só
+  devolve pedido do cliente da sessão.
+
+Quem comprou sem conta, antes de o login existir, e quer o histórico
+precisa passar pelo atendimento. O site ainda não tem um processo de
+recuperação com verificação. **Não reintroduza vínculo por documento ou
+e-mail sem essa verificação.**
+
+O cliente só consegue alterar na própria linha de `clientes` as colunas
+`nome`, `telefone` e `endereco_*`: é privilégio por coluna, definido na
+migração 0033. Uma coluna nova nasce **não editável** pelo cliente e
+precisa ser liberada explicitamente com `grant update (coluna)`.
 
 ### Como testar sem SMTP
 
@@ -437,9 +450,7 @@ Pendências reais hoje:
   de funcionar de ponta a ponta (ver "O que falta configurar no painel do
   Supabase" na seção de Autenticação de cliente). O código está pronto e
   testado.
-- Checkout não pré-preenche os dados de quem está logado — o cliente
-  redigita nome/documento/endereço mesmo tendo conta. O pedido ainda assim
-  se liga à conta pelo CPF/CNPJ.
+- Checkout integrado em 2026-09-11: exige conta e usa a identificação/endereço cadastrados; ver VALIDACAO-CHECKOUT.md para o estado e os limites da homologação.
 - "Polias" e "Correias" existem como item de menu mas **não** como
   categoria; apontam para `/produtos` até alguém criar as categorias e
   religar em `/admin/conteudo/menu`.
@@ -464,3 +475,16 @@ Pendências reais hoje:
 Já resolvido, não repetir como lacuna: módulo de tickets, upload de imagem
 com bucket de storage, e as migrations 0012, 0013, 0014, 0015 e 0018 —
 todas **aplicadas** em produção (conferido em 2026-09-10).
+
+## Checkout — integração visual de 2026-09-11
+
+Rotas: /checkout → /checkout/identificacao → /checkout/pagamento. Identificação exige conta e é preenchida pelo cadastro autenticado. CSS isolado, rascunho por aba e cartão na página hospedada do Asaas. Acompanhamento de pedidos exige a conta proprietária. Ver VALIDACAO-CHECKOUT.md para testes, migração de idempotência, configuração local de sandbox e limite da homologação transacional.
+
+
+## Atualização — cartão transparente no checkout (11/09/2026)
+
+O pagamento de cartão agora é preenchido em /checkout/pagamento e enviado pelo backend ao Asaas, sem redirecionar. Esta atualização substitui as descrições anteriores de cartão hospedado neste documento. O código não persiste PAN/CVV/titular/token e não registra payloads em logs. Os dados passam temporariamente pela memória do navegador e servidor, conforme o modelo de integração do Asaas.
+
+Inclui CSP por nonce, validação servidor/cliente, HTTPS/IP, erros sanitizados, timeout sem repetição automática, idempotência e limite persistente de tentativas por conta/IP. Pix/boleto e regras reais de estoque, preço e frete permanecem integrados. A tabela checkout_tentativas existente também guarda reservas de limite sem dados do cartão; registros de limite podem ser limpos por expiraEm e tipo, nunca remover automaticamente tentativas de cobrança incerta.
+
+186 testes passaram; build, TypeScript e lint do escopo verificados. Evidências, procedimentos e pendências estão em VALIDACAO-CHECKOUT.md. Os pagamentos dos testes de navegador são respostas controladas. Falta homologar cartão + webhook em sandbox isolado e revisar coleta de logs/APM/replay e exigências PCI no deploy real. Nenhuma compra real foi efetuada e nenhuma configuração de produção foi alterada.

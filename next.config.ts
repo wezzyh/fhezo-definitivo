@@ -1,4 +1,14 @@
 import type { NextConfig } from "next";
+import { validarAmbientesIntegracoes } from "./src/lib/config/regras-ambiente";
+
+// APPSEC-028: um deploy na Vercel com pagamento/frete no ambiente errado
+// (ex.: Production com Asaas de sandbox, Preview com credencial real) não
+// chega a ir ao ar — o build falha aqui. Só roda na Vercel (VERCEL_ENV
+// definida por ela); o build local não é afetado. A mesma regra é conferida
+// de novo em tempo de execução, antes de cada chamada ao Asaas/Melhor Envio.
+if (process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview") {
+  validarAmbientesIntegracoes(process.env);
+}
 
 // Todas as imagens cadastradas pelo admin (produtos, categorias, marcas,
 // banners, footer) e as importadas do Bling passam pelo bucket próprio

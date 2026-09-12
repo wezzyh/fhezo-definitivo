@@ -1,171 +1,192 @@
 "use client";
-
-import { Input } from "@/components/ui/input";
-import { formatarCPF, formatarCEP, formatarTelefone } from "@/lib/checkout/formatar";
-
-export interface DadosCartaoForm {
-  numero: string;
-  nomeImpresso: string;
-  validade: string;
-  cvv: string;
-}
-
-export interface DadosTitularForm {
-  nome: string;
-  cpf: string;
-  email: string;
-  telefone: string;
-  cep: string;
-}
-
-function formatarNumeroCartao(valor: string): string {
-  const numeros = valor.replace(/\D/g, "").slice(0, 19);
-  return numeros.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
-}
-
-function formatarValidadeCartao(valor: string): string {
-  const numeros = valor.replace(/\D/g, "").slice(0, 4);
-  if (numeros.length <= 2) return numeros;
-  return `${numeros.slice(0, 2)}/${numeros.slice(2)}`;
-}
-
-interface FormularioCartaoProps {
-  cartao: DadosCartaoForm;
-  onAlterarCartao: (dados: Partial<DadosCartaoForm>) => void;
-  titular: DadosTitularForm;
-  onAlterarTitular: (dados: Partial<DadosTitularForm>) => void;
-}
-
-export function FormularioCartao({
-  cartao,
-  onAlterarCartao,
-  titular,
-  onAlterarTitular,
-}: FormularioCartaoProps) {
+import { useEffect, useSyncExternalStore } from "react";
+import { useCheckout } from "@/lib/checkout/contexto";
+export type {
+  DadosCartaoForm,
+  DadosTitularForm,
+} from "@/lib/pagamento/dados-cartao";
+const assinar = () => () => {};
+function documentoProtegido() {
+  const navegacao = performance.getEntriesByType("navigation")[0] as
+    PerformanceNavigationTiming | undefined;
+  if (!navegacao) return false;
   return (
-    <div className="mt-4 space-y-6">
-      <div>
-        <h3 className="text-sm font-semibold text-ink">Dados do cartão</h3>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="numeroCartao" className="mb-1 block text-sm font-medium text-ink">
-              Número do cartão *
-            </label>
-            <Input
-              id="numeroCartao"
-              value={cartao.numero}
-              onChange={(evento) => onAlterarCartao({ numero: formatarNumeroCartao(evento.target.value) })}
-              inputMode="numeric"
-              placeholder="0000 0000 0000 0000"
-              required
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="nomeImpresso" className="mb-1 block text-sm font-medium text-ink">
-              Nome impresso no cartão *
-            </label>
-            <Input
-              id="nomeImpresso"
-              value={cartao.nomeImpresso}
-              onChange={(evento) => onAlterarCartao({ nomeImpresso: evento.target.value.toUpperCase() })}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="validadeCartao" className="mb-1 block text-sm font-medium text-ink">
-              Validade (MM/AA) *
-            </label>
-            <Input
-              id="validadeCartao"
-              value={cartao.validade}
-              onChange={(evento) => onAlterarCartao({ validade: formatarValidadeCartao(evento.target.value) })}
-              inputMode="numeric"
-              placeholder="MM/AA"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="cvv" className="mb-1 block text-sm font-medium text-ink">
-              CVV *
-            </label>
-            <Input
-              id="cvv"
-              value={cartao.cvv}
-              onChange={(evento) =>
-                onAlterarCartao({ cvv: evento.target.value.replace(/\D/g, "").slice(0, 4) })
-              }
-              inputMode="numeric"
-              placeholder="000"
-              required
-            />
-          </div>
-        </div>
+    new URL(navegacao.name).pathname.startsWith("/checkout") &&
+    Boolean(document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce)
+  );
+}
+export function FormularioCartao({ disabled }: { disabled: boolean }) {
+  const checkout = useCheckout();
+  const protegido = useSyncExternalStore(
+    assinar,
+    documentoProtegido,
+    () => false,
+  );
+  useEffect(() => {
+    // Uma navegação SPA não instala o CSP do novo documento. Antes de montar
+    // os campos, recarrega se a aba veio originalmente de uma página sem CSP.
+    if (!documentoProtegido()) window.location.replace(window.location.href);
+  }, []);
+  if (!protegido)
+    return (
+      <p className="form-message" role="status">
+        Preparando pagamento seguro...
+      </p>
+    );
+  const pf = checkout.tipoCliente === "PF";
+  return (
+    <fieldset
+      disabled={disabled}
+      className="form-fields card-fields"
+      data-private
+      data-hj-suppress
+      data-clarity-mask
+    >
+      <legend>Dados do cartão</legend>
+      <div className="card-grid">
+        <label className="card-full" htmlFor="numeroCartao">
+          Número do cartão
+          <input
+            id="numeroCartao"
+            name="numeroCartao"
+            autoComplete="off"
+            inputMode="numeric"
+            maxLength={23}
+            placeholder="0000 0000 0000 0000"
+            required
+            onInput={(e) => {
+              e.currentTarget.value = e.currentTarget.value
+                .replace(/\D/g, "")
+                .slice(0, 19)
+                .replace(/(\d{4})(?=\d)/g, "$1 ");
+            }}
+          />
+        </label>
+        <label className="card-full" htmlFor="nomeImpresso">
+          Nome impresso no cartão
+          <input
+            id="nomeImpresso"
+            name="nomeImpresso"
+            autoComplete="off"
+            maxLength={100}
+            required
+          />
+        </label>
+        <label htmlFor="validadeCartao">
+          Validade
+          <input
+            id="validadeCartao"
+            name="validadeCartao"
+            autoComplete="off"
+            inputMode="numeric"
+            placeholder="MM/AA"
+            maxLength={5}
+            required
+            onInput={(e) => {
+              const d = e.currentTarget.value.replace(/\D/g, "").slice(0, 4);
+              e.currentTarget.value =
+                d.length > 2 ? d.slice(0, 2) + "/" + d.slice(2) : d;
+            }}
+          />
+        </label>
+        <label htmlFor="cvv">
+          Código de segurança
+          <input
+            id="cvv"
+            name="cvv"
+            type="password"
+            autoComplete="off"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="CVV"
+            required
+            onInput={(e) => {
+              e.currentTarget.value = e.currentTarget.value
+                .replace(/\D/g, "")
+                .slice(0, 4);
+            }}
+          />
+        </label>
       </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-ink">Dados do titular</h3>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="nomeTitular" className="mb-1 block text-sm font-medium text-ink">
-              Nome completo do titular *
-            </label>
-            <Input
-              id="nomeTitular"
-              value={titular.nome}
-              onChange={(evento) => onAlterarTitular({ nome: evento.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="cpfTitular" className="mb-1 block text-sm font-medium text-ink">
-              CPF do titular *
-            </label>
-            <Input
-              id="cpfTitular"
-              value={titular.cpf}
-              onChange={(evento) => onAlterarTitular({ cpf: formatarCPF(evento.target.value) })}
-              inputMode="numeric"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="telefoneTitular" className="mb-1 block text-sm font-medium text-ink">
-              Telefone do titular *
-            </label>
-            <Input
-              id="telefoneTitular"
-              value={titular.telefone}
-              onChange={(evento) => onAlterarTitular({ telefone: formatarTelefone(evento.target.value) })}
-              inputMode="numeric"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="emailTitular" className="mb-1 block text-sm font-medium text-ink">
-              Email do titular *
-            </label>
-            <Input
-              id="emailTitular"
-              type="email"
-              value={titular.email}
-              onChange={(evento) => onAlterarTitular({ email: evento.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="cepTitular" className="mb-1 block text-sm font-medium text-ink">
-              CEP do titular *
-            </label>
-            <Input
-              id="cepTitular"
-              value={titular.cep}
-              onChange={(evento) => onAlterarTitular({ cep: formatarCEP(evento.target.value) })}
-              inputMode="numeric"
-              required
-            />
-          </div>
-        </div>
+      <h3 className="card-holder-heading">Titular do cartão</h3>
+      <div className="card-grid">
+        <label className="card-full" htmlFor="nomeTitular">
+          Nome completo
+          <input
+            id="nomeTitular"
+            name="nomeTitular"
+            defaultValue={pf ? checkout.dadosPF.nomeCompleto : ""}
+            autoComplete="off"
+            maxLength={200}
+            required
+          />
+        </label>
+        <label htmlFor="cpfTitular">
+          CPF do titular
+          <input
+            id="cpfTitular"
+            name="cpfTitular"
+            defaultValue={pf ? checkout.dadosPF.cpf : ""}
+            autoComplete="off"
+            inputMode="numeric"
+            maxLength={14}
+            required
+          />
+        </label>
+        <label htmlFor="telefoneTitular">
+          Telefone com DDD
+          <input
+            id="telefoneTitular"
+            name="telefoneTitular"
+            defaultValue={
+              pf ? checkout.dadosPF.telefone : checkout.dadosPJ.telefone
+            }
+            autoComplete="off"
+            inputMode="tel"
+            maxLength={20}
+            required
+          />
+        </label>
+        <label className="card-full" htmlFor="emailTitular">
+          Email
+          <input
+            id="emailTitular"
+            name="emailTitular"
+            type="email"
+            defaultValue={pf ? checkout.dadosPF.email : checkout.dadosPJ.email}
+            autoComplete="off"
+            maxLength={254}
+            required
+          />
+        </label>
+        <label htmlFor="cepTitular">
+          CEP de cobrança
+          <input
+            id="cepTitular"
+            name="cepTitular"
+            defaultValue={checkout.endereco.cep}
+            autoComplete="off"
+            inputMode="numeric"
+            maxLength={9}
+            required
+          />
+        </label>
+        <label htmlFor="numeroTitular">
+          Número do endereço
+          <input
+            id="numeroTitular"
+            name="numeroTitular"
+            defaultValue={checkout.endereco.numero}
+            autoComplete="off"
+            maxLength={30}
+            required
+          />
+        </label>
       </div>
-    </div>
+      <p className="form-message">
+        Pagamento processado pelo Asaas. Os dados do cartão não são salvos pela
+        loja.
+      </p>
+    </fieldset>
   );
 }

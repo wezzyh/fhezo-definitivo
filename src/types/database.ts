@@ -244,6 +244,8 @@ export interface Integracao {
   expira_em: string | null;
   /** Data/hora da última sincronização de estoque bem-sucedida (hoje só usado pelo provedor "bling"). */
   ultima_sincronizacao: string | null;
+  /** Ambiente do provedor que emitiu os tokens (migração 0031). Token de ambiente diferente do configurado nunca é usado. null = desconhecido. */
+  ambiente: "sandbox" | "production" | null;
   created_at: string;
   updated_at: string;
 }

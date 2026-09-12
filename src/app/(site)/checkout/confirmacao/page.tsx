@@ -1,130 +1,250 @@
 "use client";
-
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { buscarResumoPedido, type ResumoPedidoConfirmacao } from "./actions";
-import { TEXTO_STATUS_PEDIDO as TEXTO_STATUS } from "@/lib/pedidos/status";
-
-function formatarMoeda(valor: number): string {
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-const TEXTO_FORMA_PAGAMENTO: Record<string, string> = {
-  pix: "Pix",
-  boleto: "Boleto",
-  cartao: "Cartão",
-};
-
-export default function PaginaConfirmacao() {
+import { TEXTO_STATUS_PEDIDO } from "@/lib/pedidos/status";
+import { moeda } from "../resumo-pedido";
+export default function Confirmacao() {
   return (
-    <Suspense fallback={<div className="bg-page min-h-screen" />}>
-      <ConteudoConfirmacao />
+    <Suspense fallback={<p role="status">Carregando pedido...</p>}>
+      <Conteudo />
     </Suspense>
   );
 }
-
-function ConteudoConfirmacao() {
-  const searchParams = useSearchParams();
-  const pedidoId = searchParams.get("pedido");
-
-  const [resumo, setResumo] = useState<ResumoPedidoConfirmacao | null>(null);
-  const [carregando, setCarregando] = useState(Boolean(pedidoId));
-
-  useEffect(() => {
+function Conteudo() {
+  const params = useSearchParams(),
+    pedidoId = params.get("pedido");
+  const [resumo, setResumo] = useState<ResumoPedidoConfirmacao | null>(null),
+    [atualizando, setAtualizando] = useState(false),
+    [copiado, setCopiado] = useState("");
+  const atualizar = useCallback(async () => {
     if (!pedidoId) return;
-    buscarResumoPedido(pedidoId).then((resultado) => {
-      setResumo(resultado);
-      setCarregando(false);
-    });
+    setAtualizando(true);
+    try {
+      setResumo(await buscarResumoPedido(pedidoId));
+    } catch {
+      setResumo({
+        sucesso: false,
+        mensagem: "Não foi possível carregar o pedido. Tente novamente.",
+      });
+    } finally {
+      setAtualizando(false);
+    }
   }, [pedidoId]);
-
-  if (!pedidoId || (!carregando && !resumo)) {
-    return (
-      <div className="bg-page">
-        <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-          <p className="text-muted">Pedido não encontrado.</p>
-          <Link href="/produtos" className="mt-4 inline-block">
-            <Button variant="primary">Ver catálogo de produtos</Button>
-          </Link>
-        </div>
-      </div>
-    );
+  useEffect(() => {
+    let ativo = true;
+    if (pedidoId)
+      buscarResumoPedido(pedidoId)
+        .then((r) => {
+          if (ativo) setResumo(r);
+        })
+        .catch(() => {
+          if (ativo)
+            setResumo({
+              sucesso: false,
+              mensagem: "Não foi possível consultar o pedido.",
+            });
+        });
+    return () => {
+      ativo = false;
+    };
+  }, [pedidoId]);
+  const pendente = resumo?.sucesso && resumo.status === "pendente";
+  useEffect(() => {
+    if (!pendente) return;
+    let tentativas = 0,
+      executando = false;
+    const timer = setInterval(async () => {
+      if (executando) return;
+      if (++tentativas > 60) {
+        clearInterval(timer);
+        return;
+      }
+      executando = true;
+      await atualizar();
+      executando = false;
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [pendente, atualizar]);
+  async function copiar(texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado("Código copiado.");
+    } catch {
+      setCopiado("Selecione o código e copie manualmente.");
+    }
   }
-
-  if (carregando || !resumo) {
+  if (!pedidoId) return <p className="form-message">Pedido não informado.</p>;
+  if (!resumo)
     return (
-      <div className="bg-page">
-        <div className="mx-auto max-w-2xl px-4 py-12 text-center text-muted">Carregando pedido...</div>
-      </div>
+      <p className="form-message" role="status">
+        Carregando pedido...
+      </p>
     );
-  }
-
-  if (!resumo.sucesso) {
+  if (!resumo.sucesso)
     return (
-      <div className="bg-page">
-        <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-          <p className="text-muted">{resumo.mensagem}</p>
-          <Link href="/produtos" className="mt-4 inline-block">
-            <Button variant="primary">Ver catálogo de produtos</Button>
-          </Link>
-        </div>
-      </div>
+      <section className="empty-cart">
+        <p role="alert">{resumo.mensagem}</p>
+        <Link
+          className="back-link"
+          href={
+            "/login?proximo=" +
+            encodeURIComponent("/checkout/confirmacao?pedido=" + pedidoId)
+          }
+        >
+          Entrar na minha conta
+        </Link>
+        <button
+          className="secondary-button"
+          disabled={atualizando}
+          onClick={atualizar}
+        >
+          Tentar novamente
+        </button>
+      </section>
     );
-  }
-
+  const forma =
+    resumo.formaPagamento === "pix"
+      ? "Pix"
+      : resumo.formaPagamento === "boleto"
+        ? "Boleto"
+        : "Cartão de crédito";
   return (
-    <div className="bg-page">
-      <div className="mx-auto max-w-2xl px-4 py-12">
-        <div className="rounded-md border border-brand-green/30 bg-brand-green/10 p-6 text-center">
-          <h1 className="text-2xl font-semibold text-brand-green-dark">Pedido realizado!</h1>
-          <p className="mt-1 text-sm text-ink">Número do pedido: #{resumo.numeroPedido}</p>
-        </div>
-
-        <div className="mt-6 rounded-md border border-zinc-200 bg-white p-6">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted">Status</span>
-            <span className="font-medium text-ink">
-              {TEXTO_STATUS[resumo.status] ?? resumo.status}
-            </span>
+    <div className="checkout-layout">
+      <div className="cart-content">
+        <section className="form-section">
+          <h2>
+            {resumo.status === "pago"
+              ? "Pagamento confirmado"
+              : resumo.status === "cancelado"
+                ? "Pedido cancelado"
+                : "Pedido registrado"}
+          </h2>
+          <p className="form-message">
+            Número do pedido: #{resumo.numeroPedido}
+          </p>
+          <div className="payment-status" role="status">
+            <p>{TEXTO_STATUS_PEDIDO[resumo.status] ?? resumo.status}</p>
+            {pendente && (
+              <p className="form-message">
+                Aguardando a confirmação do pagamento por {forma}.
+              </p>
+            )}
           </div>
-          <div className="mt-2 flex justify-between text-sm">
-            <span className="text-muted">Forma de pagamento</span>
-            <span className="font-medium text-ink">
-              {resumo.formaPagamento ? TEXTO_FORMA_PAGAMENTO[resumo.formaPagamento] : "—"}
-            </span>
-          </div>
-          <div className="mt-2 flex justify-between text-sm">
-            <span className="text-muted">Frete</span>
-            <span className="font-medium text-ink">{resumo.freteTransportadora ?? "—"}</span>
-          </div>
-          <div className="mt-4 flex justify-between border-t border-zinc-200 pt-4">
-            <span className="font-semibold text-ink">Total</span>
-            <span className="text-lg font-semibold text-ink">{formatarMoeda(resumo.total)}</span>
-          </div>
-
-          {resumo.boleto && (
-            <div className="mt-6 border-t border-zinc-200 pt-4">
-              <p className="text-sm font-medium text-ink">Boleto</p>
-              {resumo.boleto.linhaDigitavel && (
-                <p className="mt-2 break-all rounded-md bg-zinc-50 px-3 py-2 text-xs text-muted">
-                  {resumo.boleto.linhaDigitavel}
-                </p>
-              )}
-              <a href={resumo.boleto.url} target="_blank" rel="noopener noreferrer" className="mt-3 block">
-                <Button type="button" variant="primary" className="w-full">
-                  Abrir boleto
-                </Button>
-              </a>
-            </div>
+          {resumo.aviso && (
+            <p className="form-message" role="status">
+              {resumo.aviso}
+            </p>
           )}
-        </div>
-
-        <Link href="/produtos" className="mt-6 block text-center">
-          <Button variant="outline">Continuar comprando</Button>
+          {resumo.pix && (
+            <>
+              <Image
+                className="qr-code"
+                unoptimized
+                src={"data:image/png;base64," + resumo.pix.qrCodeBase64}
+                alt="QR Code para pagamento via Pix"
+                width={224}
+                height={224}
+              />
+              <label htmlFor="codigo-pix">Código Pix copia e cola</label>
+              <input
+                id="codigo-pix"
+                className="payment-code"
+                readOnly
+                value={resumo.pix.copiaECola}
+                onFocus={(e) => e.target.select()}
+              />
+              <button
+                className="text-button"
+                onClick={() => copiar(resumo.pix!.copiaECola)}
+              >
+                Copiar código Pix
+              </button>
+            </>
+          )}
+          {resumo.boleto && (
+            <>
+              <p className="form-message">Confira o vencimento no boleto.</p>
+              {resumo.boleto.linhaDigitavel && (
+                <>
+                  <label htmlFor="codigo-boleto">Linha digitável</label>
+                  <input
+                    id="codigo-boleto"
+                    className="payment-code"
+                    readOnly
+                    value={resumo.boleto.linhaDigitavel}
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button
+                    className="text-button"
+                    onClick={() => copiar(resumo.boleto!.linhaDigitavel!)}
+                  >
+                    Copiar linha digitável
+                  </button>
+                </>
+              )}
+              <a
+                href={resumo.boleto.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="checkout-button"
+              >
+                Abrir boleto
+              </a>
+            </>
+          )}
+          {copiado && (
+            <p role="status" className="form-message">
+              {copiado}
+            </p>
+          )}
+          <button
+            type="button"
+            className="secondary-button mt-6"
+            disabled={atualizando}
+            onClick={atualizar}
+          >
+            {atualizando ? "Consultando..." : "Atualizar pagamento"}
+          </button>
+        </section>
+        <Link href="/produtos" className="back-link">
+          Continuar comprando
         </Link>
       </div>
+      <aside className="order-summary summary-expanded">
+        <h2>Resumo do pedido</h2>
+        <ul className="summary-products">
+          {resumo.itens.map((i, index) => (
+            <li key={index}>
+              <span>
+                {i.quantidade} × {i.nome}
+              </span>
+              <span>{moeda(i.preco * i.quantidade)}</span>
+            </li>
+          ))}
+        </ul>
+        <dl className="summary-details">
+          <div>
+            <dt>Subtotal</dt>
+            <dd>{moeda(resumo.total - resumo.freteValor)}</dd>
+          </div>
+          <div>
+            <dt>Frete</dt>
+            <dd>{moeda(resumo.freteValor)}</dd>
+          </div>
+          <div>
+            <dt>Pagamento</dt>
+            <dd>{forma}</dd>
+          </div>
+        </dl>
+        <div className="summary-total">
+          <span>Total do pedido</span>
+          <strong>{moeda(resumo.total)}</strong>
+        </div>
+        <p className="total-caption">{resumo.freteTransportadora}</p>
+      </aside>
     </div>
   );
 }

@@ -13,6 +13,16 @@ export interface ItemEstoque {
   quantidade: number;
 }
 
+/**
+ * Defesa em profundidade: quem chama já valida a quantidade (ver
+ * src/lib/checkout/validar-pedido.ts) e as funções SQL também recusam —
+ * mas uma quantidade negativa aqui SOMARIA ao estoque, então não custa
+ * barrar de novo antes de chegar ao banco.
+ */
+function quantidadeValida(quantidade: number): boolean {
+  return Number.isInteger(quantidade) && quantidade > 0;
+}
+
 export type ResultadoDescontoEstoque =
   | { sucesso: true }
   | { sucesso: false; produtoIdSemEstoque: string };
@@ -30,6 +40,11 @@ export async function descontarEstoqueItens(
   const itensDescontados: ItemEstoque[] = [];
 
   for (const item of itens) {
+    if (!quantidadeValida(item.quantidade)) {
+      await reverterEstoqueItens(supabase, itensDescontados);
+      return { sucesso: false, produtoIdSemEstoque: item.produtoId };
+    }
+
     const { data, error } = await supabase.rpc("descontar_estoque", {
       produto_id: item.produtoId,
       quantidade: item.quantidade,
@@ -53,7 +68,7 @@ export async function reverterEstoqueItens(
   itens: ItemEstoque[],
 ): Promise<void> {
   await Promise.all(
-    itens.map((item) =>
+    itens.filter((item) => quantidadeValida(item.quantidade)).map((item) =>
       supabase.rpc("reverter_estoque", {
         produto_id: item.produtoId,
         quantidade: item.quantidade,

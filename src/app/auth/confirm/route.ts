@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
-import { vincularClienteExistentePorEmail } from "@/lib/clientes/sessao";
 
 // Ponto de chegada de TODO link enviado por e-mail pelo Supabase Auth
 // (confirmação de cadastro e recuperação de senha). Fica fora do grupo
@@ -50,16 +49,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?erro=link_invalido", request.url));
   }
 
-  // Vincula a conta recém-confirmada a um cadastro de cliente que já
-  // exista com o mesmo e-mail (ex.: quem comprou como convidado antes de
-  // criar conta). Melhor esforço: nunca impede a entrada.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user?.email) {
-    await vincularClienteExistentePorEmail(user.id, user.email);
-  }
-
+  // Não vincula a conta a cadastros antigos com o mesmo e-mail (APPSEC-003):
+  // o e-mail de uma compra sem conta nunca foi verificado.
   return NextResponse.redirect(new URL(destino, request.url));
 }

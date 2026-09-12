@@ -1,5 +1,12 @@
 "use server";
 
+import { isIP } from "node:net";
+import { obterConfigAsaas } from "@/lib/config/integracoes";
+import { createHash } from "node:crypto";
+import { obterClienteLogado } from "@/lib/clientes/sessao";
+import { permitirTentativaCartao } from "@/lib/checkout/limite-cartao";
+import { executarUmaVez } from "@/lib/checkout/idempotencia";
+import { errosIdentificacao } from "@/lib/checkout/validar-identificacao";
 import { headers } from "next/headers";
 import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
 import {
@@ -7,16 +14,24 @@ import {
   criarCobrancaAsaas,
   buscarQrCodePixAsaas,
   buscarLinhaDigitavelBoletoAsaas,
-  consultarCobrancaAsaas,
   type BillingTypeAsaas,
 } from "@/lib/pagamento/asaas";
+import { mapearStatusAsaasParaPedido } from "@/lib/pagamento/pedidos";
 import {
-  atualizarStatusPedidoPorPagamento,
-  mapearStatusAsaasParaPedido,
-} from "@/lib/pagamento/pedidos";
-import { descontarEstoqueItens, reverterEstoqueItens } from "@/lib/pagamento/estoque";
-import { validarNumeroCartao, validarValidadeCartao, validarCvv } from "@/lib/pagamento/validar-cartao";
-import type { TipoClienteCheckout, DadosPF, DadosPJ, EnderecoEntrega, FreteSelecionado } from "@/lib/checkout/tipos";
+  descontarEstoqueItens,
+  reverterEstoqueItens,
+} from "@/lib/pagamento/estoque";
+import {
+  agruparItensPorProduto,
+  esquemaCriarPedido,
+} from "@/lib/checkout/validar-pedido";
+import type {
+  TipoClienteCheckout,
+  DadosPF,
+  DadosPJ,
+  EnderecoEntrega,
+} from "@/lib/checkout/tipos";
+import { calcularFreteDoPedido } from "@/lib/checkout/frete-pedido";
 import type { FormaPagamento, Produto, StatusPedido } from "@/types/database";
 
 // Desconta o estoque atomicamente, cria a cobrança no Asaas e, só depois de
@@ -43,15 +58,24 @@ interface TitularCartaoInput {
   email: string;
   telefone: string;
   cep: string;
+  numeroEndereco: string;
 }
 
 export interface CriarPedidoInput {
-  clienteId: string;
+  checkoutId: string;
+  totalEsperado?: number;
+  /**
+   * Só conferência, nunca autoridade (APPSEC-004): o cliente do pedido é
+   * SEMPRE o da sessão. Se vier diferente, a conta mudou depois da
+   * identificação (outro login, outra aba) e o pagamento é recusado.
+   */
+  clienteId?: string;
   tipoCliente: TipoClienteCheckout;
   dadosPF: DadosPF;
   dadosPJ: DadosPJ;
   endereco: EnderecoEntrega;
-  freteSelecionado: FreteSelecionado;
+  /** Só o id da opção de frete escolhida. O valor é recalculado no servidor (calcularFreteDoPedido). */
+  freteServicoId: number;
   itens: ItemPedidoInput[];
   formaPagamento: FormaPagamento;
   cartao?: DadosCartaoInput;
@@ -67,10 +91,14 @@ export type ResultadoCriarPedido =
       formaPagamento: FormaPagamento;
       pix?: { paymentId: string; qrCodeBase64: string; copiaECola: string };
       pixIndisponivel?: { paymentId: string };
-      boleto?: { paymentId: string; url: string; linhaDigitavel: string | null };
-      cartao?: { paymentId: string };
+      boleto?: {
+        paymentId: string;
+        url: string;
+        linhaDigitavel: string | null;
+      };
+      cartao?: { paymentId: string; url?: string };
     }
-  | { sucesso: false; mensagem: string };
+  | { sucesso: false; mensagem: string; bloqueado?: boolean };
 
 const BILLING_TYPE_POR_FORMA: Record<FormaPagamento, BillingTypeAsaas> = {
   pix: "PIX",
@@ -82,30 +110,147 @@ function numeroPedidoLegivel(id: string): string {
   return id.replace(/-/g, "").slice(0, 8).toUpperCase();
 }
 
-async function obterIpCliente(): Promise<string | undefined> {
-  const listaHeaders = await headers();
-  const encaminhado = listaHeaders.get("x-forwarded-for");
-  return encaminhado?.split(",")[0]?.trim();
+/** Soma de preços em ponto flutuante pode dar 69.99999999 — a cobrança é sempre em centavos. */
+function arredondarCentavos(valor: number): number {
+  return Math.round(valor * 100) / 100;
 }
 
-export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCriarPedido> {
-  if (input.itens.length === 0) {
-    return { sucesso: false, mensagem: "Seu carrinho está vazio." };
-  }
+async function contextoCartao(): Promise<string | null> {
+  const h = await headers();
+  const config = obterConfigAsaas();
+  const ip = (
+    h.get(process.env.VERCEL ? "x-vercel-forwarded-for" : "x-forwarded-for") ??
+    ""
+  )
+    .split(",")[0]
+    .trim();
+  const host = h.get("host") ?? "";
+  const local =
+    config.ambiente === "sandbox" &&
+    /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  if (h.get("x-forwarded-proto") !== "https" && !local) return null;
+  return isIP(ip) ? ip : local ? "127.0.0.1" : null;
+}
 
-  if (input.formaPagamento === "cartao") {
-    if (!input.cartao || !input.titularCartao) {
-      return { sucesso: false, mensagem: "Preencha os dados do cartão." };
-    }
-    if (!validarNumeroCartao(input.cartao.numero)) {
-      return { sucesso: false, mensagem: "Número de cartão inválido." };
-    }
-    if (!validarValidadeCartao(input.cartao.validade)) {
-      return { sucesso: false, mensagem: "Validade do cartão inválida ou vencida." };
-    }
-    if (!validarCvv(input.cartao.cvv)) {
-      return { sucesso: false, mensagem: "CVV inválido." };
-    }
+export async function criarPedido(
+  entrada: CriarPedidoInput,
+): Promise<ResultadoCriarPedido> {
+  try {
+    return await validarEProcessarPedido(entrada);
+  } catch {
+    return {
+      sucesso: false,
+      bloqueado: true,
+      mensagem:
+        "Não foi possível confirmar o pagamento. Não refaça a compra; consulte o atendimento com a referência da tentativa.",
+    };
+  }
+}
+
+async function validarEProcessarPedido(
+  entrada: CriarPedidoInput,
+): Promise<ResultadoCriarPedido> {
+  // CriarPedidoInput é só o contrato com a página: em runtime, o argumento
+  // de uma Server Action é o que o navegador mandar — revalida tudo aqui.
+  const validacao = esquemaCriarPedido.safeParse(entrada);
+  if (!validacao.success) {
+    const primeiro = validacao.error.issues[0];
+    const mensagemPropria =
+      primeiro?.path[0] === "itens" || primeiro?.path[0] === "clienteId";
+    return {
+      sucesso: false,
+      mensagem:
+        mensagemPropria && primeiro
+          ? primeiro.message
+          : "Dados do pedido inválidos. Revise e tente de novo.",
+    };
+  }
+  let ipCliente: string | undefined;
+  if (validacao.data.formaPagamento === "cartao") {
+    if (!validacao.data.cartao || !validacao.data.titularCartao)
+      return {
+        sucesso: false,
+        mensagem: "Preencha os dados do cartão e do titular.",
+      };
+    const ip = await contextoCartao();
+    if (!ip)
+      return {
+        sucesso: false,
+        mensagem:
+          "Não foi possível validar a conexão segura para o cartão. Entre em contato com a loja.",
+      };
+    ipCliente = ip;
+  } else {
+    delete validacao.data.cartao;
+    delete validacao.data.titularCartao;
+  }
+  // APPSEC-004: quem é o dono do pedido é decidido aqui, pela sessão
+  // (auth.uid() → clientes.auth_user_id), nunca pelo que o navegador mandou.
+  const sessao = await obterClienteLogado();
+  if (!sessao?.cliente) {
+    return {
+      sucesso: false,
+      mensagem: "Entre na sua conta e confirme a identificação antes de pagar.",
+    };
+  }
+  if (
+    validacao.data.clienteId !== undefined &&
+    validacao.data.clienteId !== sessao.cliente.id
+  ) {
+    return {
+      sucesso: false,
+      mensagem:
+        "A conta conectada mudou depois da identificação. Volte à identificação e confirme seus dados antes de pagar.",
+    };
+  }
+  const c = sessao.cliente;
+  validacao.data.tipoCliente = c.tipo;
+  validacao.data.dadosPF = {
+    nomeCompleto: c.nome,
+    cpf: c.documento,
+    email: c.email,
+    telefone: c.telefone ?? "",
+  };
+  validacao.data.dadosPJ = {
+    razaoSocial: c.nome,
+    cnpj: c.documento,
+    email: c.email,
+    telefone: c.telefone ?? "",
+    inscricaoEstadual: "",
+  };
+  const erros = errosIdentificacao(validacao.data);
+  if (erros.length) return { sucesso: false, mensagem: erros[0] };
+  // A chave é vinculada à conta: uma sessão diferente não recupera a tentativa anterior.
+  const hash = createHash("sha256")
+    .update(sessao.userId + ":" + validacao.data.checkoutId)
+    .digest("hex");
+  const chaveDaConta = [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    hash.slice(12, 16),
+    hash.slice(16, 20),
+    hash.slice(20, 32),
+  ].join("-");
+  return executarUmaVez(chaveDaConta, () =>
+    processarPedido(validacao.data, c.id, sessao.userId, ipCliente),
+  );
+}
+
+async function processarPedido(
+  input: CriarPedidoInput,
+  /** Cliente da SESSÃO — o único valor aceito como dono do pedido. */
+  clienteId: string,
+  userId: string,
+  ipCliente?: string,
+): Promise<ResultadoCriarPedido> {
+  // Mesmo produto em mais de uma linha vira uma só, com a quantidade
+  // somada — é essa soma que precisa caber no estoque.
+  const itens = agruparItensPorProduto(input.itens);
+  if (!itens) {
+    return {
+      sucesso: false,
+      mensagem: "Quantidade acima do permitido para um único pedido.",
+    };
   }
 
   let supabase;
@@ -114,29 +259,52 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
   } catch {
     return {
       sucesso: false,
-      mensagem: "Não foi possível processar o pagamento agora. Tente novamente em instantes.",
+      mensagem:
+        "Não foi possível processar o pagamento agora. Tente novamente em instantes.",
     };
   }
 
-  const idsProdutos = input.itens.map((item) => item.produtoId);
+  const idsProdutos = itens.map((item) => item.produtoId);
   const { data: produtos, error: erroProdutos } = await supabase
     .from("produtos")
-    .select("id,nome,sku,preco,estoque,ativo")
+    .select(
+      "id,nome,sku,preco,estoque,ativo,peso_kg,altura_cm,largura_cm,comprimento_cm",
+    )
     .in("id", idsProdutos)
-    .returns<Pick<Produto, "id" | "nome" | "sku" | "preco" | "estoque" | "ativo">[]>();
+    .returns<
+      Pick<
+        Produto,
+        | "id"
+        | "nome"
+        | "sku"
+        | "preco"
+        | "estoque"
+        | "ativo"
+        | "peso_kg"
+        | "altura_cm"
+        | "largura_cm"
+        | "comprimento_cm"
+      >[]
+    >();
 
   if (erroProdutos) {
-    return { sucesso: false, mensagem: "Não foi possível validar os produtos do carrinho." };
+    return {
+      sucesso: false,
+      mensagem: "Não foi possível validar os produtos do carrinho.",
+    };
   }
 
-  const mapaProdutos = new Map((produtos ?? []).map((produto) => [produto.id, produto]));
+  const mapaProdutos = new Map(
+    (produtos ?? []).map((produto) => [produto.id, produto]),
+  );
 
-  for (const item of input.itens) {
+  for (const item of itens) {
     const produto = mapaProdutos.get(item.produtoId);
     if (!produto || !produto.ativo) {
       return {
         sucesso: false,
-        mensagem: "Um dos produtos do seu carrinho não está mais disponível. Atualize o carrinho.",
+        mensagem:
+          "Um dos produtos do seu carrinho não está mais disponível. Atualize o carrinho.",
       };
     }
     if (item.quantidade > produto.estoque) {
@@ -147,13 +315,56 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
     }
   }
 
-  const subtotal = input.itens.reduce((total, item) => {
+  const subtotal = itens.reduce((total, item) => {
     const produto = mapaProdutos.get(item.produtoId)!;
     return total + produto.preco * item.quantidade;
   }, 0);
 
-  const total = subtotal + input.freteSelecionado.valor;
+  // APPSEC-001: o frete é recalculado aqui — CEP deste pedido, produtos e
+  // quantidades deste pedido, peso/dimensões do banco. O navegador só disse
+  // qual serviço quer. Vem ANTES de qualquer efeito colateral (Asaas,
+  // estoque, pedido): se a cotação falhar, nada acontece.
+  const fretePedido = await calcularFreteDoPedido(
+    input.endereco.cep,
+    itens,
+    mapaProdutos,
+    input.freteServicoId,
+  );
+  if (!fretePedido.sucesso) {
+    return { sucesso: false, mensagem: fretePedido.mensagem };
+  }
+  const frete = fretePedido.frete;
 
+  const total = arredondarCentavos(subtotal + frete.valor);
+  if (!(total > 0)) {
+    return {
+      sucesso: false,
+      mensagem:
+        "Não foi possível calcular o total do pedido. Atualize o carrinho e tente novamente.",
+    };
+  }
+
+  if (
+    input.totalEsperado !== undefined &&
+    Math.round(input.totalEsperado * 100) !== Math.round(total * 100)
+  ) {
+    return {
+      sucesso: false,
+      mensagem:
+        "Os preços ou o frete mudaram. Volte à identificação, recalcule a entrega e revise o total antes de finalizar.",
+    };
+  }
+
+  if (
+    input.formaPagamento === "cartao" &&
+    (!ipCliente || !(await permitirTentativaCartao(userId, ipCliente)))
+  ) {
+    return {
+      sucesso: false,
+      mensagem:
+        "Não foi possível liberar outra tentativa de cartão agora. Aguarde 15 minutos ou escolha outro meio de pagamento.",
+    };
+  }
   const dadosCliente =
     input.tipoCliente === "PF"
       ? {
@@ -182,7 +393,10 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
   });
 
   if (!clienteAsaas.sucesso) {
-    return { sucesso: false, mensagem: `Não foi possível preparar o pagamento: ${clienteAsaas.mensagem}` };
+    return {
+      sucesso: false,
+      mensagem: `Não foi possível preparar o pagamento: ${clienteAsaas.mensagem}`,
+    };
   }
 
   // Desconto atômico de estoque (UPDATE condicional no Postgres — ver
@@ -190,7 +404,7 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
   // cobrança no Asaas: a validação de estoque acima é só uma checagem
   // rápida para falhar cedo, mas entre ela e agora outro cliente pode ter
   // comprado a última unidade. Esta é a checagem que realmente vale.
-  const desconto = await descontarEstoqueItens(supabase, input.itens);
+  const desconto = await descontarEstoqueItens(supabase, itens);
   if (!desconto.sucesso) {
     const produtoSemEstoque = mapaProdutos.get(desconto.produtoIdSemEstoque);
     return {
@@ -199,55 +413,66 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
     };
   }
 
-  const ipCliente = await obterIpCliente();
-
   const cobranca = await criarCobrancaAsaas({
     customerId: clienteAsaas.dados.customerId,
     billingType: BILLING_TYPE_POR_FORMA[input.formaPagamento],
     valor: total,
-    descricao: `Pedido Fhezo Industrial — ${input.itens.length} item(ns)`,
+    descricao: `Pedido Fhezo Industrial — ${itens.length} item(ns)`,
     ipCliente,
-    cartao: input.cartao
+    referenciaExterna: input.checkoutId,
+    ...(input.formaPagamento === "cartao" && input.cartao && input.titularCartao
       ? {
-          numero: input.cartao.numero,
-          nomeImpresso: input.cartao.nomeImpresso,
-          mesValidade: input.cartao.validade.split("/")[0]?.trim() ?? "",
-          anoValidade: (() => {
-            const ano = input.cartao!.validade.split("/")[1]?.trim() ?? "";
-            return ano.length === 2 ? `20${ano}` : ano;
-          })(),
-          cvv: input.cartao.cvv,
+          cartao: {
+            numero: input.cartao.numero,
+            nomeImpresso: input.cartao.nomeImpresso,
+            mesValidade: input.cartao.validade.split("/")[0],
+            anoValidade:
+              input.cartao.validade.split("/")[1].length === 2
+                ? "20" + input.cartao.validade.split("/")[1]
+                : input.cartao.validade.split("/")[1],
+            cvv: input.cartao.cvv,
+          },
+          titularCartao: input.titularCartao,
         }
-      : undefined,
-    titularCartao: input.titularCartao
-      ? {
-          nome: input.titularCartao.nome,
-          cpf: input.titularCartao.cpf,
-          email: input.titularCartao.email,
-          telefone: input.titularCartao.telefone,
-          cep: input.titularCartao.cep,
-          numeroEndereco: input.endereco.numero,
-        }
-      : undefined,
+      : {}),
   });
 
   if (!cobranca.sucesso) {
-    await reverterEstoqueItens(supabase, input.itens);
-    return { sucesso: false, mensagem: `Não foi possível criar a cobrança: ${cobranca.mensagem}` };
+    if (
+      cobranca.statusHttp &&
+      cobranca.statusHttp >= 400 &&
+      cobranca.statusHttp < 500 &&
+      cobranca.statusHttp !== 408
+    ) {
+      await reverterEstoqueItens(supabase, itens);
+      return {
+        sucesso: false,
+        mensagem:
+          "O pagamento não foi autorizado. Confira os dados ou escolha outra forma de pagamento.",
+      };
+    }
+    return {
+      sucesso: false,
+      bloqueado: true,
+      mensagem:
+        "Não foi possível confirmar a criação da cobrança. Não refaça a compra. Referência para conferência: " +
+        input.checkoutId,
+    };
   }
 
-  const statusInicial = mapearStatusAsaasParaPedido(cobranca.dados.status) ?? "pendente";
+  const statusInicial =
+    mapearStatusAsaasParaPedido(cobranca.dados.status) ?? "pendente";
 
   const { data: pedidoCriado, error: erroPedido } = await supabase
     .from("pedidos")
     .insert({
-      cliente_id: input.clienteId,
+      cliente_id: clienteId,
       status: statusInicial,
       total,
       forma_pagamento: input.formaPagamento,
       asaas_payment_id: cobranca.dados.id,
-      frete_valor: input.freteSelecionado.valor,
-      frete_transportadora: input.freteSelecionado.transportadora,
+      frete_valor: frete.valor,
+      frete_transportadora: frete.transportadora,
       endereco_cep: input.endereco.cep,
       endereco_rua: input.endereco.rua,
       endereco_numero: input.endereco.numero,
@@ -262,26 +487,31 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
   if (erroPedido || !pedidoCriado) {
     return {
       sucesso: false,
+      bloqueado: true,
       mensagem:
-        "O pagamento foi iniciado, mas não conseguimos registrar o pedido. Entre em contato informando este erro: " +
-        (erroPedido?.message ?? "erro desconhecido"),
+        "O pagamento foi iniciado, mas não conseguimos registrar o pedido. Não refaça a compra. Referência: " +
+        input.checkoutId,
     };
   }
 
-  const linhasItens = input.itens.map((item) => ({
+  const linhasItens = itens.map((item) => ({
     pedido_id: pedidoCriado.id,
     produto_id: item.produtoId,
     quantidade: item.quantidade,
     preco_unitario: mapaProdutos.get(item.produtoId)!.preco,
   }));
 
-  const { error: erroItens } = await supabase.from("pedido_itens").insert(linhasItens);
+  const { error: erroItens } = await supabase
+    .from("pedido_itens")
+    .insert(linhasItens);
 
   if (erroItens) {
-    await supabase.from("pedidos").delete().eq("id", pedidoCriado.id);
     return {
       sucesso: false,
-      mensagem: "Não foi possível registrar os itens do pedido. Tente novamente.",
+      bloqueado: true,
+      mensagem:
+        "A cobrança foi criada, mas os itens precisam de conferência. Não refaça a compra. Referência: " +
+        input.checkoutId,
     };
   }
 
@@ -333,31 +563,4 @@ export async function criarPedido(input: CriarPedidoInput): Promise<ResultadoCri
     formaPagamento: input.formaPagamento,
     cartao: { paymentId: cobranca.dados.id },
   };
-}
-
-/** Tenta buscar o QR Code do Pix novamente, sem recriar o pedido/cobrança. */
-export async function buscarQrCodePagamentoPix(
-  paymentId: string,
-): Promise<{ sucesso: true; qrCodeBase64: string; copiaECola: string } | { sucesso: false; mensagem: string }> {
-  const resultado = await buscarQrCodePixAsaas(paymentId);
-  if (!resultado.sucesso) return resultado;
-  return { sucesso: true, ...resultado.dados };
-}
-
-/** Usado pelo polling da tela de Pix — consulta o Asaas e já atualiza o pedido se confirmado. */
-export async function verificarStatusPagamento(
-  paymentId: string,
-): Promise<{ sucesso: true; pago: boolean } | { sucesso: false; mensagem: string }> {
-  const resultado = await consultarCobrancaAsaas(paymentId);
-  if (!resultado.sucesso) return resultado;
-
-  try {
-    const supabase = criarClienteSupabaseAdmin();
-    await atualizarStatusPedidoPorPagamento(supabase, paymentId, resultado.dados.status);
-  } catch {
-    // Não impede o cliente de ver que o pagamento foi confirmado — só o
-    // registro do status no nosso banco falhou (o webhook tentará de novo).
-  }
-
-  return { sucesso: true, pago: mapearStatusAsaasParaPedido(resultado.dados.status) === "pago" };
 }

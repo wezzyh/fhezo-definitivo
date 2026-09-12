@@ -1,0 +1,13 @@
+{
+  "tipo": "Testes de interface com respostas controladas; sem compra real.",
+  "resultados": [
+    "Sete produtos, nomes/SKUs longos e sem overflow: 1440, 901, 768, 390 e 320 px.",
+    "Quantidade individual, limite de estoque, remoção, limpeza e desfazer.",
+    "Carrinho → identificação da conta → pagamento; voltar e recarregar preservam endereço, CEP, frete e método.",
+    "Entrada pelo catálogo recarrega o documento antes de coletar cartão; CSP bloqueia script inline sem nonce.",
+    "Cartão no site: validação antes de enviar; PAN/CVV ausentes do armazenamento e limpos após envio/reload; layout entre 320 e 1440 px.",
+    "Respostas controladas: erro de pagamento mantém o fluxo; pedido pendente nunca é exibido como pago e sobrevive ao reload.",
+    "Visitante precisa criar conta ou entrar e recebe retorno para identificação."
+  ],
+  "errors": []
+}

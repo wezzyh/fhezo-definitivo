@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { criarClienteSupabaseServidor } from "@/lib/supabase/server";
-import { vincularClienteExistentePorEmail } from "@/lib/clientes/sessao";
 
 export interface EstadoFormularioLogin {
   erro?: string;
@@ -27,7 +26,6 @@ export async function entrarCliente(
     return { erro: "E-mail ou senha incorretos." };
   }
 
-  await vincularClienteExistentePorEmail(data.user.id, email);
-
+  // Sem vínculo automático por e-mail com cadastros antigos (APPSEC-003).
   redirect(proximaUrl.startsWith("/") ? proximaUrl : "/conta");
 }

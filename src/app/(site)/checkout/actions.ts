@@ -1,103 +1,104 @@
 "use server";
-
-import { criarClienteSupabaseAdmin } from "@/lib/supabase/admin";
-import type { TipoClienteCheckout, DadosPF, DadosPJ } from "@/lib/checkout/tipos";
-import type { Cliente, TipoPessoa } from "@/types/database";
-
-// Grava (ou atualiza, se já existir pelo CPF/CNPJ) o cliente na tabela
-// "clientes" ao avançar da etapa de dados para a de pagamento. Usa a
-// service_role key porque quem faz checkout aqui é um visitante do site,
-// sem sessão de admin — e "clientes" precisa continuar gravável só a
-// partir de código de servidor confiável, nunca direto do navegador.
-
-export type ResultadoSalvarCliente =
-  | { sucesso: true; clienteId: string }
-  | { sucesso: false; mensagem: string };
-
-interface SalvarClienteInput {
-  tipoCliente: TipoClienteCheckout;
-  dadosPF: DadosPF;
-  dadosPJ: DadosPJ;
-}
-
-export async function salvarClienteCheckout(
-  input: SalvarClienteInput,
-): Promise<ResultadoSalvarCliente> {
-  const dados: {
-    tipo: TipoPessoa;
-    nome: string;
-    documento: string;
-    email: string;
-    telefone: string;
-  } =
-    input.tipoCliente === "PF"
-      ? {
-          tipo: "PF",
-          nome: input.dadosPF.nomeCompleto.trim(),
-          documento: input.dadosPF.cpf.replace(/\D/g, ""),
-          email: input.dadosPF.email.trim(),
-          telefone: input.dadosPF.telefone.replace(/\D/g, ""),
-        }
-      : {
-          tipo: "PJ",
-          nome: input.dadosPJ.razaoSocial.trim(),
-          documento: input.dadosPJ.cnpj.replace(/\D/g, ""),
-          email: input.dadosPJ.email.trim(),
-          telefone: input.dadosPJ.telefone.replace(/\D/g, ""),
-        };
-
-  if (!dados.nome || !dados.documento || !dados.email) {
-    return { sucesso: false, mensagem: "Preencha todos os dados obrigatórios antes de continuar." };
-  }
-
-  let supabase;
+import { obterClienteLogado } from "@/lib/clientes/sessao";
+import { errosIdentificacao } from "@/lib/checkout/validar-identificacao";
+import { validarCNPJ, validarCPF } from "@/lib/checkout/validar-documento";
+import type { Cliente } from "@/types/database";
+export type PerfilCheckout = Pick<
+  Cliente,
+  | "id"
+  | "tipo"
+  | "nome"
+  | "documento"
+  | "email"
+  | "telefone"
+  | "endereco_cep"
+  | "endereco_rua"
+  | "endereco_numero"
+  | "endereco_complemento"
+  | "endereco_bairro"
+  | "endereco_cidade"
+  | "endereco_uf"
+>;
+export async function carregarIdentificacaoCheckout(): Promise<
+  | { sucesso: true; cliente: PerfilCheckout }
+  | { sucesso: false; login: boolean; mensagem: string }
+> {
   try {
-    supabase = criarClienteSupabaseAdmin();
+    const sessao = await obterClienteLogado();
+    if (!sessao)
+      return {
+        sucesso: false,
+        login: true,
+        mensagem: "Crie sua conta ou entre para continuar o pedido.",
+      };
+    if (!sessao.cliente)
+      return {
+        sucesso: false,
+        login: false,
+        mensagem:
+          "Sua conta ainda não tem um cadastro de cliente vinculado. Fale com o suporte para concluir o pedido.",
+      };
+    const c = sessao.cliente;
+    return {
+      sucesso: true,
+      cliente: {
+        id: c.id,
+        tipo: c.tipo,
+        nome: c.nome,
+        documento: c.documento,
+        email: c.email,
+        telefone: c.telefone,
+        endereco_cep: c.endereco_cep,
+        endereco_rua: c.endereco_rua,
+        endereco_numero: c.endereco_numero,
+        endereco_complemento: c.endereco_complemento,
+        endereco_bairro: c.endereco_bairro,
+        endereco_cidade: c.endereco_cidade,
+        endereco_uf: c.endereco_uf,
+      },
+    };
   } catch {
     return {
       sucesso: false,
-      mensagem: "Não foi possível salvar seus dados agora. Tente novamente em instantes.",
+      login: false,
+      mensagem: "Não foi possível carregar sua conta. Tente novamente.",
     };
   }
-
-  const { data: existentes, error: erroBusca } = await supabase
-    .from("clientes")
-    .select("id")
-    .eq("documento", dados.documento)
-    .limit(1)
-    .returns<Pick<Cliente, "id">[]>();
-
-  if (erroBusca) {
-    return { sucesso: false, mensagem: `Erro ao verificar cadastro: ${erroBusca.message}` };
-  }
-
-  const existente = existentes?.[0];
-
-  if (existente) {
-    const { error: erroUpdate } = await supabase
-      .from("clientes")
-      .update(dados)
-      .eq("id", existente.id);
-
-    if (erroUpdate) {
-      return { sucesso: false, mensagem: `Erro ao atualizar cadastro: ${erroUpdate.message}` };
-    }
-
-    return { sucesso: true, clienteId: existente.id };
-  }
-
-  const { data: criado, error: erroInsert } = await supabase
-    .from("clientes")
-    .insert(dados)
-    .select("id")
-    .single<Pick<Cliente, "id">>();
-
-  if (erroInsert || !criado) {
+}
+export async function salvarClienteCheckout(): Promise<
+  { sucesso: true; clienteId: string } | { sucesso: false; mensagem: string }
+> {
+  const resultado = await carregarIdentificacaoCheckout();
+  if (!resultado.sucesso) return resultado;
+  const c = resultado.cliente;
+  // CPF/CNPJ não é editável pelo cliente (migração 0033, APPSEC-010):
+  // mandar "atualizar em Minha conta" seria um beco sem saída.
+  if (!(c.tipo === "PF" ? validarCPF(c.documento) : validarCNPJ(c.documento)))
     return {
       sucesso: false,
-      mensagem: `Erro ao salvar cadastro: ${erroInsert?.message ?? "erro desconhecido"}`,
+      mensagem:
+        "O CPF/CNPJ do seu cadastro precisa ser conferido. Fale com o suporte para concluir o pedido.",
     };
-  }
-
-  return { sucesso: true, clienteId: criado.id };
+  const erros = errosIdentificacao({
+    tipoCliente: c.tipo,
+    dadosPF: {
+      nomeCompleto: c.nome,
+      cpf: c.documento,
+      email: c.email,
+      telefone: c.telefone ?? "",
+    },
+    dadosPJ: {
+      razaoSocial: c.nome,
+      cnpj: c.documento,
+      email: c.email,
+      telefone: c.telefone ?? "",
+      inscricaoEstadual: "",
+    },
+  });
+  if (erros.length)
+    return {
+      sucesso: false,
+      mensagem: erros[0] + " Atualize seu cadastro em Minha conta.",
+    };
+  return { sucesso: true, clienteId: c.id };
 }
