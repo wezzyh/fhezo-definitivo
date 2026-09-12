@@ -215,6 +215,9 @@ function esperarNenhumEfeitoColateral(banco?: {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Estes testes exercitam o checkout aberto; o fechado fica em
+  // checkout-desligado.test.ts.
+  vi.stubEnv("CHECKOUT_ENABLED", "true");
 });
 
 describe("criarPedido — ataque de quantidade (APPSEC-002)", () => {

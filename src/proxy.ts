@@ -1,8 +1,15 @@
 import { politicaCheckout } from "@/lib/checkout/csp";
+import { bloqueioModoManutencao } from "@/lib/manutencao/portao";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  // Modo construção (MAINTENANCE_MODE) vem antes de tudo, para qualquer
+  // caminho. Passar por ele não dispensa nada do que vem abaixo: /admin
+  // continua exigindo admin e /checkout continua com a CSP própria.
+  const bloqueio = await bloqueioModoManutencao(request);
+  if (bloqueio) return bloqueio;
+
   if (
     request.nextUrl.pathname === "/checkout" ||
     request.nextUrl.pathname.startsWith("/checkout/")
@@ -25,6 +32,14 @@ export async function proxy(request: NextRequest) {
     resposta.headers.set("X-Content-Type-Options", "nosniff");
     resposta.headers.set("X-Frame-Options", "DENY");
     return resposta;
+  }
+  // O matcher agora cobre o site inteiro (por causa do modo construção);
+  // a trava de admin abaixo continua valendo só para /admin, como antes.
+  if (
+    request.nextUrl.pathname !== "/admin" &&
+    !request.nextUrl.pathname.startsWith("/admin/")
+  ) {
+    return NextResponse.next();
   }
   let respostaSupabase = NextResponse.next({ request });
 
@@ -102,6 +117,10 @@ export async function proxy(request: NextRequest) {
   return respostaSupabase;
 }
 
+// Tudo, menos os arquivos de build do Next e o favicon: o modo construção
+// precisa ver toda página, rota e Server Action. (Server Actions são POSTs
+// para o caminho da página — um matcher mais estreito deixaria as de fora
+// sem portão.)
 export const config = {
-  matcher: ["/admin/:path*", "/checkout/:path*"],
+  matcher: ["/((?!_next/static/|favicon\\.ico$).*)"],
 };

@@ -426,6 +426,68 @@ Enquanto o "Confirm email" estiver ligado (está, hoje) e não houver SMTP,
 dá para liberar uma conta na mão em Authentication > Users > (usuário) >
 Confirm email.
 
+## Modo construção e kill switch do checkout (2026-09-12)
+
+Duas travas independentes, configuradas só por variável de ambiente
+(`src/lib/config/lancamento.ts`, mesmo estilo de APPSEC-028: aceita só
+`"true"`/`"false"`, ausente ou inválido cai no lado seguro).
+
+**`MAINTENANCE_MODE`** (ausente/inválido = ligado). Portão no início do
+`src/proxy.ts` (`src/lib/manutencao/portao.ts`), que agora roda em todo
+caminho, exceto `/_next/static/` e `/favicon.ico`. Visitante sem liberação
+recebe 503 com a página "Site em construção". O HTML é autocontido
+(`src/lib/manutencao/pagina.ts`), sem script, asset nem banco. A senha é
+digitada nessa página e conferida em `POST /manutencao/entrar`, que grava o
+cookie `fhezo_manutencao`: HttpOnly, Secure, SameSite=Lax, 7 dias, com
+HMAC-SHA256 de `MAINTENANCE_SECRET` sobre a expiração e um hash da senha.
+O cookie **não contém a senha** (`src/lib/manutencao/liberacao.ts`). Trocar
+a senha ou o segredo revoga todas as liberações.
+
+Rotas que passam sem cookie, com caminho **e** método exatos, nunca por
+prefixo, query ou cabeçalho:
+
+| Rota | Motivo |
+|---|---|
+| `POST /api/webhooks/asaas` | Servidor→servidor; continua exigindo `ASAAS_WEBHOOK_TOKEN`. |
+| `GET /admin/integracao/melhorenvio/callback` | Retorno do OAuth; continua exigindo sessão de admin. |
+| `GET /admin/integracao/bling/callback` | Idem, Bling. |
+| `POST /manutencao/entrar` | Onde a senha é conferida. |
+
+Qualquer requisição com cabeçalho `Next-Action` (Server Action) é bloqueada
+sem cookie, inclusive nas rotas acima: o Next pode encaminhar uma action
+para o worker certo mesmo se o POST chegar em outro caminho.
+
+**A senha de manutenção não é login de admin.** Todo `/admin` exige o
+cookie de manutenção **e depois** o `is_admin()` de sempre.
+
+**`CHECKOUT_ENABLED`** (ausente/inválido = fechado). A autoridade é a
+primeira linha de `criarPedido` (`src/app/(site)/checkout/pagamento/actions.ts`),
+antes de validar entrada, ler sessão, reservar limite, descontar estoque,
+falar com o Asaas ou gravar pedido. `criarCobrancaAsaas`
+(`src/lib/pagamento/asaas.ts`) repete a checagem como segunda trava. O
+aviso no topo do checkout (`checkout/layout.tsx`) é só UX. Webhook do
+Asaas e demais integrações não são afetados.
+
+Vercel → Production (mudar variável exige **novo deploy**):
+
+| Variável | Em construção | No lançamento |
+|---|---|---|
+| `MAINTENANCE_MODE` | `true` | `false` |
+| `CHECKOUT_ENABLED` | `false` | `true` |
+| `MAINTENANCE_PASSWORD` | senha forte, ≥ 12 caracteres | pode ficar |
+| `MAINTENANCE_SECRET` | aleatório, ≥ 32 caracteres, ≠ senha | pode ficar |
+
+Em Production o **build falha** se `MAINTENANCE_MODE`/`CHECKOUT_ENABLED`
+não estiverem declaradas, ou se a manutenção estiver ligada sem
+senha/segredo válidos (`next.config.ts`). Em Preview e local não falha o
+build, mas cai no lado seguro. Para desenvolver local sem a página:
+`MAINTENANCE_MODE=false` no `.env.local`.
+
+Limites conhecidos: `/manutencao/entrar` tem só atraso fixo de 400 ms por
+senha errada, não limite persistente de tentativas. Por isso a senha deve
+ser forte e própria, não reaproveitada de outra conta. Links de e-mail
+(`/auth/confirm`) só funcionam em navegador já liberado.
+
 ## Convenções do projeto (siga estas, não as genéricas)
 
 - **Tudo em português**: nomes de função/variável, comentários, mensagens de erro, labels de UI. Nomes de coluna do banco em `snake_case` batem exatamente com os campos TS em `src/types/database.ts` (sem camada de tradução).

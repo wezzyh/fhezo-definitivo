@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { validarAmbientesIntegracoes } from "./src/lib/config/regras-ambiente";
+import { validarConfigLancamento } from "./src/lib/config/lancamento";
 
 // APPSEC-028: um deploy na Vercel com pagamento/frete no ambiente errado
 // (ex.: Production com Asaas de sandbox, Preview com credencial real) não
@@ -8,6 +9,16 @@ import { validarAmbientesIntegracoes } from "./src/lib/config/regras-ambiente";
 // de novo em tempo de execução, antes de cada chamada ao Asaas/Melhor Envio.
 if (process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview") {
   validarAmbientesIntegracoes(process.env);
+}
+
+// Modo construção e kill switch do checkout: em Production, MAINTENANCE_MODE
+// e CHECKOUT_ENABLED precisam estar declarados como "true"/"false" (e a
+// senha/segredo de manutenção, se ela estiver ligada) — senão o build falha.
+// Em Preview e na máquina local, ausente/inválido não derruba o build, mas
+// em tempo de execução cai no lado seguro (manutenção ligada, checkout
+// desligado). Ver src/lib/config/lancamento.ts.
+if (process.env.VERCEL_ENV === "production") {
+  validarConfigLancamento(process.env);
 }
 
 // Todas as imagens cadastradas pelo admin (produtos, categorias, marcas,

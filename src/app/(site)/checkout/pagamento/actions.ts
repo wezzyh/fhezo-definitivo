@@ -2,6 +2,10 @@
 
 import { isIP } from "node:net";
 import { obterConfigAsaas } from "@/lib/config/integracoes";
+import {
+  MENSAGEM_CHECKOUT_FECHADO,
+  checkoutHabilitado,
+} from "@/lib/config/lancamento";
 import { createHash } from "node:crypto";
 import { obterClienteLogado } from "@/lib/clientes/sessao";
 import { permitirTentativaCartao } from "@/lib/checkout/limite-cartao";
@@ -135,6 +139,14 @@ async function contextoCartao(): Promise<string | null> {
 export async function criarPedido(
   entrada: CriarPedidoInput,
 ): Promise<ResultadoCriarPedido> {
+  // Kill switch do checkout (CHECKOUT_ENABLED). Primeira linha, antes de
+  // validar entrada, ler sessão, reservar limite, descontar estoque, criar
+  // cliente/cobrança no Asaas ou gravar pedido. Esconder o botão na página
+  // é só UX: esta checagem é a que vale, inclusive para quem chama a
+  // Server Action direto.
+  if (!checkoutHabilitado()) {
+    return { sucesso: false, mensagem: MENSAGEM_CHECKOUT_FECHADO };
+  }
   try {
     return await validarEProcessarPedido(entrada);
   } catch {

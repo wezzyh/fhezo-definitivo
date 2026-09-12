@@ -1,6 +1,7 @@
 import "server-only";
 
 import { obterConfigAsaas, type ConfigAsaas } from "@/lib/config/integracoes";
+import { MENSAGEM_CHECKOUT_FECHADO, checkoutHabilitado } from "@/lib/config/lancamento";
 
 // Cliente da API do Asaas — criação de cliente/cobrança e consulta de
 // status. URL e chave vêm de obterConfigAsaas (src/lib/config/integracoes.ts):
@@ -187,6 +188,12 @@ function formatarDataAsaas(data: Date): string {
 export async function criarCobrancaAsaas(
   input: CriarCobrancaInput,
 ): Promise<ResultadoAsaas<CobrancaAsaas>> {
+  // Segunda trava do kill switch (a primeira é o início de criarPedido):
+  // com CHECKOUT_ENABLED diferente de "true", nenhuma cobrança nova sai
+  // daqui, mesmo que um caminho futuro esqueça a checagem de cima.
+  if (!checkoutHabilitado()) {
+    return { sucesso: false, mensagem: MENSAGEM_CHECKOUT_FECHADO };
+  }
   const hoje = new Date();
   const vencimento =
     input.billingType === "BOLETO"

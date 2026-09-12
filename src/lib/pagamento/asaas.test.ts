@@ -14,6 +14,8 @@ beforeEach(() => {
   fetchFalso.mockReset();
   vi.stubGlobal("fetch", fetchFalso);
   vi.spyOn(console, "error").mockImplementation(() => {});
+  // Checkout aberto; o kill switch tem o próprio describe no fim do arquivo.
+  vi.stubEnv("CHECKOUT_ENABLED", "true");
 });
 
 afterEach(() => {
@@ -234,4 +236,28 @@ it("resposta de sucesso inválida e redirecionamento falham sem repetição auto
     ).sucesso,
   ).toBe(false);
   expect(fetchFalso).toHaveBeenCalledTimes(1);
+});
+
+describe("kill switch do checkout (CHECKOUT_ENABLED)", () => {
+  it.each(["false", "", "TRUE", "1", undefined])(
+    "CHECKOUT_ENABLED=%j → nenhuma cobrança é criada e o Asaas nem é chamado",
+    async (valor) => {
+      ambiente("production", "production");
+      if (valor === undefined) delete process.env.CHECKOUT_ENABLED;
+      else vi.stubEnv("CHECKOUT_ENABLED", valor);
+
+      const r = await criarCobrancaAsaas({
+        customerId: "cus_1",
+        billingType: "PIX",
+        valor: 10,
+        descricao: "x",
+      });
+
+      expect(r).toEqual({
+        sucesso: false,
+        mensagem: "A loja ainda não está recebendo pedidos. Volte em breve.",
+      });
+      expect(fetchFalso).not.toHaveBeenCalled();
+    },
+  );
 });
